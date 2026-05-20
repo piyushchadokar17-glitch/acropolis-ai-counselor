@@ -1,26 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Landing } from "@/components/Landing";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: Landing,
+  head: () => ({
+    meta: [
+      { title: "CollegeGPT · AI Admission Counselor — Acropolis Institute, Indore" },
+      {
+        name: "description",
+        content:
+          "Your smart AI college admission counselor for Acropolis Institute of Technology & Research, Indore. Admissions, fees, scholarships, placements & hostel — answered instantly.",
+      },
+      { property: "og:title", content: "CollegeGPT · AI Admission Counselor" },
+      {
+        property: "og:description",
+        content:
+          "AI-powered admission guidance for Acropolis Institute of Technology & Research, Indore.",
+      },
+    ],
+  }),
 });
-
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
-}
