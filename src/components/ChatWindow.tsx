@@ -262,7 +262,7 @@ export function ChatWindow({
                 <PromptInputSubmit
                   status={status}
                   onStop={stop}
-                  size="default"
+                  size="sm"
                   className="h-9 rounded-full bg-gradient-to-r from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] px-5 text-sm font-semibold text-white shadow-[0_0_25px_oklch(0.62_0.22_285/0.5)] hover:opacity-95"
                 >
                   {isBusy ? null : "Transmit"}
