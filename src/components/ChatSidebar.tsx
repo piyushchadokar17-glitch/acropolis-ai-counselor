@@ -50,15 +50,24 @@ export function ChatSidebar({
         <AcropolisLogo />
       </div>
 
+      <div className="mx-3 mb-3 flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.025] px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="relative flex size-2">
+          <span className="absolute inset-0 animate-ping rounded-full bg-accent/60" />
+          <span className="relative size-2 rounded-full bg-accent shadow-[0_0_8px_var(--cyan-glow)]" />
+        </span>
+        AI counselor · online
+      </div>
+
       <div className="px-3">
         <button
           onClick={onNew}
-          className="group flex w-full items-center gap-2 rounded-xl bg-gradient-to-r from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] px-3.5 py-2.5 text-sm font-semibold text-white shadow-[0_0_25px_oklch(0.62_0.22_285/0.45)] transition-transform hover:scale-[1.01]"
+          className="group flex w-full items-center gap-2 rounded-xl bg-gradient-to-r from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] px-3.5 py-2.5 text-sm font-semibold text-white shadow-[0_0_25px_oklch(0.62_0.22_285/0.45)] transition-all hover:scale-[1.01] hover:shadow-[0_0_35px_oklch(0.62_0.22_285/0.65)]"
         >
-          <Plus className="size-4" />
+          <Plus className="size-4 transition-transform group-hover:rotate-90" />
           New Chat
         </button>
       </div>
+
 
       <div className="mt-5 flex-1 overflow-y-auto scrollbar-thin px-2 pb-4">
         <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
