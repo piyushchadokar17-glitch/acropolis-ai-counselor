@@ -136,16 +136,20 @@ export function ChatWindow({
 
   return (
     <div className="relative flex h-full w-full flex-col">
+      {/* Ambient aurora */}
+      <div className="pointer-events-none absolute inset-0 -z-10 chat-aurora opacity-80" />
+
       {/* Header */}
       <header className="flex items-center justify-between border-b border-white/5 bg-[oklch(0.13_0.04_265)]/70 px-5 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-2.5">
           <div className="relative">
-            <div className="size-9 rounded-xl bg-gradient-to-br from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] p-px">
+            <div className="absolute -inset-1 rounded-2xl conic-ring opacity-50 blur-[2px]" />
+            <div className="relative size-9 rounded-xl bg-gradient-to-br from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] p-px">
               <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[oklch(0.13_0.04_265)]">
                 <Sparkles className="size-4 text-accent" />
               </div>
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-accent ring-2 ring-[oklch(0.13_0.04_265)]" />
+            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-accent ring-2 ring-[oklch(0.13_0.04_265)] shadow-[0_0_8px_var(--cyan-glow)]" />
           </div>
           <div className="leading-tight">
             <div className="font-display text-sm font-semibold">CollegeGPT</div>
@@ -185,44 +189,56 @@ export function ChatWindow({
               />
             ) : (
               <>
-                {messages.map((m) => (
-                  <Message key={m.id} from={m.role}>
-                    {m.role === "assistant" && (
-                      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                        <div className="flex size-6 items-center justify-center rounded-md bg-gradient-to-br from-[oklch(0.62_0.22_285)]/40 to-[oklch(0.78_0.15_200)]/30 ring-1 ring-white/10">
-                          <Sparkles className="size-3 text-accent" />
+                {messages.map((m, idx) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: "easeOut", delay: idx === messages.length - 1 ? 0 : 0 }}
+                  >
+                    <Message from={m.role}>
+                      {m.role === "assistant" && (
+                        <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="relative grid size-6 place-items-center rounded-md bg-gradient-to-br from-[oklch(0.62_0.22_285)]/45 to-[oklch(0.78_0.15_200)]/30 ring-1 ring-white/10 shadow-[0_0_14px_oklch(0.78_0.15_200/0.35)]">
+                            <Sparkles className="size-3 text-accent" />
+                          </div>
+                          <span className="font-medium text-foreground/80">CollegeGPT</span>
                         </div>
-                        CollegeGPT
-                      </div>
-                    )}
-                    <MessageContent
-                      className={cn(
-                        m.role === "assistant" &&
-                          "rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.06] shadow-[0_0_30px_oklch(0.78_0.15_200/0.06)]",
                       )}
-                    >
-                      <div className="prose-chat">
-                        {m.parts.map((p, i) =>
-                          p.type === "text" ? (
-                            <ReactMarkdown key={i}>{p.text}</ReactMarkdown>
-                          ) : null,
+                      <MessageContent
+                        className={cn(
+                          m.role === "assistant" && "bubble-assistant",
+                          m.role === "user" && "bubble-user",
                         )}
-                      </div>
-                    </MessageContent>
-                  </Message>
+                      >
+                        <div className="prose-chat">
+                          {m.parts.map((p, i) =>
+                            p.type === "text" ? (
+                              <ReactMarkdown key={i}>{p.text}</ReactMarkdown>
+                            ) : null,
+                          )}
+                        </div>
+                      </MessageContent>
+                    </Message>
+                  </motion.div>
                 ))}
                 <AnimatePresence>
                   {isBusy && (
                     <motion.div
-                      initial={{ opacity: 0, y: 6 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="flex items-center gap-2 text-xs"
+                      className="flex items-center gap-2.5 pl-1"
                     >
-                      <div className="flex size-6 items-center justify-center rounded-md bg-gradient-to-br from-[oklch(0.62_0.22_285)]/40 to-[oklch(0.78_0.15_200)]/30 ring-1 ring-white/10">
+                      <div className="relative grid size-6 place-items-center rounded-md bg-gradient-to-br from-[oklch(0.62_0.22_285)]/45 to-[oklch(0.78_0.15_200)]/30 ring-1 ring-white/10 shadow-[0_0_14px_oklch(0.78_0.15_200/0.4)]">
                         <Sparkles className="size-3 animate-pulse text-accent" />
                       </div>
-                      <Shimmer className="text-sm">Analysing curriculum…</Shimmer>
+                      <div className="bubble-assistant !py-2.5 !px-3.5">
+                        <span className="typing-dots" aria-label="CollegeGPT is typing">
+                          <span /><span /><span />
+                        </span>
+                      </div>
+                      <Shimmer className="text-xs">Thinking…</Shimmer>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -236,7 +252,7 @@ export function ChatWindow({
       {/* Composer */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-4 pb-5 pt-10">
         <div className="pointer-events-auto mx-auto w-full max-w-3xl">
-          <div className="glass-strong relative rounded-3xl p-1.5 ring-1 ring-white/10 shadow-[0_0_40px_oklch(0.62_0.22_285/0.15)]">
+          <div className="composer-glow glass-strong relative rounded-3xl p-1.5 ring-1 ring-white/10 shadow-[0_0_40px_oklch(0.62_0.22_285/0.15)]">
             <PromptInput onSubmit={handleSubmit} className="bg-transparent">
               <PromptInputTextarea
                 ref={textareaRef}
@@ -251,10 +267,10 @@ export function ChatWindow({
                   onClick={toggleMic}
                   aria-label={listening ? "Stop listening" : "Start voice input"}
                   className={cn(
-                    "relative grid size-9 place-items-center rounded-full transition",
+                    "relative grid size-9 place-items-center rounded-full transition-all duration-300",
                     listening
-                      ? "bg-accent text-[oklch(0.14_0.04_265)] animate-pulse-ring"
-                      : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground",
+                      ? "bg-gradient-to-br from-[oklch(0.78_0.15_200)] to-[oklch(0.62_0.22_285)] text-white animate-pulse-ring shadow-[0_0_25px_oklch(0.78_0.15_200/0.65)]"
+                      : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground hover:shadow-[0_0_16px_oklch(0.78_0.15_200/0.3)]",
                   )}
                 >
                   {listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
@@ -263,7 +279,7 @@ export function ChatWindow({
                   status={status}
                   onStop={stop}
                   size="sm"
-                  className="h-9 rounded-full bg-gradient-to-r from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] px-5 text-sm font-semibold text-white shadow-[0_0_25px_oklch(0.62_0.22_285/0.5)] hover:opacity-95"
+                  className="h-9 rounded-full bg-gradient-to-r from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] px-5 text-sm font-semibold text-white shadow-[0_0_25px_oklch(0.62_0.22_285/0.5)] hover:opacity-95 hover:shadow-[0_0_35px_oklch(0.62_0.22_285/0.65)] transition-all"
                 >
                   {isBusy ? null : "Transmit"}
                 </PromptInputSubmit>
@@ -288,8 +304,9 @@ function EmptyState({ onPick }: { onPick: (p: string) => void }) {
       className="flex flex-col items-center gap-6 pt-10 text-center"
     >
       <div className="relative">
-        <div className="absolute inset-0 -z-10 rounded-full bg-[radial-gradient(circle,oklch(0.78_0.15_200/0.35),transparent_70%)] blur-2xl" />
-        <div className="grid size-20 place-items-center rounded-2xl bg-gradient-to-br from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] p-px">
+        <div className="absolute inset-0 -z-10 rounded-full bg-[radial-gradient(circle,oklch(0.78_0.15_200/0.4),transparent_70%)] blur-2xl" />
+        <div className="absolute -inset-3 rounded-3xl conic-ring opacity-40 blur-md" />
+        <div className="relative grid size-20 place-items-center rounded-2xl bg-gradient-to-br from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] p-px breathe-glow">
           <div className="grid h-full w-full place-items-center rounded-[15px] bg-[oklch(0.14_0.04_265)]">
             <Sparkles className="size-8 text-accent" />
           </div>
@@ -297,7 +314,7 @@ function EmptyState({ onPick }: { onPick: (p: string) => void }) {
       </div>
       <div>
         <h2 className="font-display text-3xl font-bold">
-          Greetings, future scholar.
+          Greetings, future <span className="text-gradient">scholar</span>.
         </h2>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           I&apos;m your CollegeGPT counselor, powered by the Acropolis Wisdom engine. Ask anything about admissions, courses, fees, or campus life.
@@ -305,14 +322,17 @@ function EmptyState({ onPick }: { onPick: (p: string) => void }) {
       </div>
 
       <div className="mt-2 grid w-full max-w-2xl gap-2.5 sm:grid-cols-2">
-        {STARTER_PROMPTS.map((p) => (
-          <button
+        {STARTER_PROMPTS.map((p, i) => (
+          <motion.button
             key={p}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 + i * 0.07, duration: 0.4 }}
             onClick={() => onPick(p)}
-            className="glass group rounded-2xl px-4 py-3.5 text-left text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:text-foreground"
+            className="glass group rounded-2xl px-4 py-3.5 text-left text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:text-foreground hover:shadow-[0_0_30px_oklch(0.78_0.15_200/0.2)]"
           >
             {p}
-          </button>
+          </motion.button>
         ))}
       </div>
     </motion.div>

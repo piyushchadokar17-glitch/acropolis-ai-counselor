@@ -122,15 +122,17 @@ export function Landing() {
           className="relative mx-auto flex aspect-square w-full max-w-[520px] items-center justify-center"
         >
           <div className="absolute inset-8 rounded-full bg-[radial-gradient(circle_at_center,oklch(0.62_0.22_285/0.35),transparent_60%)] blur-2xl" />
+          <div className="absolute inset-2 -z-0 rounded-full conic-ring opacity-30 blur-2xl" />
           <motion.img
             src={heroOrb}
             alt="AI counselor orb"
             width={520}
             height={520}
-            className="relative z-10 h-full w-full rounded-full object-cover ring-1 ring-white/10 glow-violet"
+            className="relative z-10 h-full w-full rounded-full object-cover ring-1 ring-white/10 breathe-glow"
             animate={{ rotate: [0, 6, 0, -6, 0] }}
             transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
           />
+
           {/* Floating chat bubble */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
