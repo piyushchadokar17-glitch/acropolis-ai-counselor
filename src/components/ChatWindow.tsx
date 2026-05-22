@@ -2,6 +2,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { AcropolisLogo } from "@/components/AcropolisLogo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import {
