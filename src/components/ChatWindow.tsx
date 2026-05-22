@@ -2,6 +2,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { AcropolisLogo } from "@/components/AcropolisLogo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import {
@@ -141,18 +142,14 @@ export function ChatWindow({
 
       {/* Header */}
       <header className="flex items-center justify-between border-b border-white/5 bg-[oklch(0.13_0.04_265)]/70 px-5 py-3 backdrop-blur-xl">
-        <div className="flex items-center gap-2.5">
-          <div className="relative">
-            <div className="absolute -inset-1 rounded-2xl conic-ring opacity-50 blur-[2px]" />
-            <div className="relative size-9 rounded-xl bg-gradient-to-br from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] p-px">
-              <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[oklch(0.13_0.04_265)]">
-                <Sparkles className="size-4 text-accent" />
-              </div>
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-accent ring-2 ring-[oklch(0.13_0.04_265)] shadow-[0_0_8px_var(--cyan-glow)]" />
-          </div>
+        <div className="flex items-center gap-3">
+          <AcropolisLogo variant="mark" size="sm" />
+          <div className="h-8 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent" />
           <div className="leading-tight">
-            <div className="font-display text-sm font-semibold">CollegeGPT</div>
+            <div className="flex items-center gap-1.5 font-display text-sm font-semibold">
+              <Sparkles className="size-3.5 text-accent" />
+              CollegeGPT
+            </div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="inline-block size-1.5 animate-pulse rounded-full bg-accent" />
               AI online · Admission Counselor
