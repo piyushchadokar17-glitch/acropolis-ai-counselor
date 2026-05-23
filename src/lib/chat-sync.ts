@@ -49,7 +49,7 @@ export async function syncThreadToSupabase(
         user_id: user.id,
         role: m.role,
         content,
-        parts: m.parts as unknown as object,
+        parts: JSON.parse(JSON.stringify(m.parts)),
       };
     });
 
