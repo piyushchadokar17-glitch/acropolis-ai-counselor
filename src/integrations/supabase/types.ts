@@ -14,7 +14,236 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chats: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      courses: {
+        Row: {
+          code: string
+          created_at: string
+          department: string | null
+          description: string | null
+          duration_years: number | null
+          eligibility: string | null
+          fees_per_year: number | null
+          id: string
+          level: string | null
+          name: string
+          seats: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          duration_years?: number | null
+          eligibility?: string | null
+          fees_per_year?: number | null
+          id?: string
+          level?: string | null
+          name: string
+          seats?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          duration_years?: number | null
+          eligibility?: string | null
+          fees_per_year?: number | null
+          id?: string
+          level?: string | null
+          name?: string
+          seats?: number | null
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          course_interest: string | null
+          created_at: string
+          email: string | null
+          id: string
+          message: string | null
+          name: string
+          phone: string | null
+          source: string | null
+          user_id: string | null
+        }
+        Insert: {
+          course_interest?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message?: string | null
+          name: string
+          phone?: string | null
+          source?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          course_interest?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message?: string | null
+          name?: string
+          phone?: string | null
+          source?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string
+          id: string
+          parts: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          content: string
+          created_at?: string
+          id?: string
+          parts?: Json | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          parts?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notices: {
+        Row: {
+          body: string | null
+          category: string | null
+          created_at: string
+          id: string
+          pinned: boolean
+          published_at: string
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          published_at?: string
+          title: string
+        }
+        Update: {
+          body?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          published_at?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      pdf_documents: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          size_bytes: number | null
+          storage_path: string
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          size_bytes?: number | null
+          storage_path: string
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
