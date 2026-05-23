@@ -18,10 +18,22 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session) nav({ to: "/chat" });
+    });
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) nav({ to: "/chat" });
     });
+    return () => subscription.unsubscribe();
   }, [nav]);
+
+  const friendly = (msg: string) => {
+    if (/email not confirmed/i.test(msg)) return "Please confirm your email — check your inbox for the verification link.";
+    if (/invalid login/i.test(msg)) return "Invalid email or password.";
+    if (/weak.?password|pwned/i.test(msg)) return "That password is too common. Please choose a stronger one.";
+    if (/already registered|already exists|user.*exists/i.test(msg)) return "An account with this email already exists. Try signing in.";
+    return msg;
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,22 +41,30 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: window.location.origin + "/chat",
             data: { full_name: name },
           },
         });
         if (error) throw error;
+        if (!data.session) {
+          const { error: siErr } = await supabase.auth.signInWithPassword({ email, password });
+          if (siErr) {
+            setErr("Account created. Please check your email to confirm, then sign in.");
+            setMode("signin");
+            return;
+          }
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
       nav({ to: "/chat" });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Authentication failed");
+      setErr(friendly(e instanceof Error ? e.message : "Authentication failed"));
     } finally {
       setBusy(false);
     }
