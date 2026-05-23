@@ -12,9 +12,13 @@ import {
   Library,
   Phone,
   Home as HomeIcon,
+  LogIn,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
 import type { ChatThread } from "@/hooks/use-threads";
 import { AcropolisLogo } from "@/components/AcropolisLogo";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -122,7 +126,8 @@ export function ChatSidebar({
         </ul>
       </div>
 
-      <div className="border-t border-white/5 p-3">
+      <div className="border-t border-white/5 p-3 space-y-1">
+        <AccountRow />
         <Link
           to="/"
           className={cn(
@@ -134,5 +139,34 @@ export function ChatSidebar({
         </Link>
       </div>
     </aside>
+  );
+}
+
+function AccountRow() {
+  const { user, signOut } = useAuth();
+  if (!user) {
+    return (
+      <Link
+        to="/auth"
+        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+      >
+        <LogIn className="size-3.5" /> Sign in to sync
+      </Link>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 rounded-lg px-2 py-2">
+      <div className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] text-white">
+        <UserIcon className="size-3.5" />
+      </div>
+      <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{user.email}</div>
+      <button
+        onClick={() => signOut()}
+        aria-label="Sign out"
+        className="rounded p-1 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+      >
+        <LogOut className="size-3.5" />
+      </button>
+    </div>
   );
 }
