@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { z } from "zod";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatWindow } from "@/components/ChatWindow";
+import { InquiryGate } from "@/components/InquiryGate";
 import { ParticleField } from "@/components/ParticleField";
 import { useThreads } from "@/hooks/use-threads";
 
