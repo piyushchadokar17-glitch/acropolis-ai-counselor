@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UIMessage } from "ai";
-import { syncThreadToSupabase } from "@/lib/chat-sync";
+import { syncInquiryMessages, syncThreadToSupabase } from "@/lib/chat-sync";
 
 export type ChatThread = {
   id: string;
