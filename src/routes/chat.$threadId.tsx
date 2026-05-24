@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { z } from "zod";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatWindow } from "@/components/ChatWindow";
+import { InquiryGate } from "@/components/InquiryGate";
 import { ParticleField } from "@/components/ParticleField";
 import { useThreads } from "@/hooks/use-threads";
 
@@ -52,28 +53,30 @@ function ChatPage() {
   );
 
   return (
-    <div className="relative flex h-screen w-full overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <ParticleField density={35} />
+    <InquiryGate>
+      <div className="relative flex h-screen w-full overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <ParticleField density={35} />
+        </div>
+        <ChatSidebar
+          threads={threads}
+          activeId={threadId}
+          onNew={handleNew}
+          onDelete={handleDelete}
+          onPickTopic={handleTopic}
+        />
+        <main className="relative flex-1">
+          {active && (
+            <ChatWindow
+              key={threadId}
+              threadId={threadId}
+              initialMessages={active.messages}
+              initialQuery={search?.q}
+              onMessagesChange={updateMessages}
+            />
+          )}
+        </main>
       </div>
-      <ChatSidebar
-        threads={threads}
-        activeId={threadId}
-        onNew={handleNew}
-        onDelete={handleDelete}
-        onPickTopic={handleTopic}
-      />
-      <main className="relative flex-1">
-        {active && (
-          <ChatWindow
-            key={threadId}
-            threadId={threadId}
-            initialMessages={active.messages}
-            initialQuery={search?.q}
-            onMessagesChange={updateMessages}
-          />
-        )}
-      </main>
-    </div>
+    </InquiryGate>
   );
 }

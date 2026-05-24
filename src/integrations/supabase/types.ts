@@ -80,6 +80,36 @@ export type Database = {
         }
         Relationships: []
       }
+      inquiry_messages: {
+        Row: {
+          content: string
+          created_at: string
+          email: string
+          id: string
+          inquiry_id: string
+          parts: Json | null
+          role: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          email: string
+          id?: string
+          inquiry_id: string
+          parts?: Json | null
+          role: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          email?: string
+          id?: string
+          inquiry_id?: string
+          parts?: Json | null
+          role?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           course_interest: string | null

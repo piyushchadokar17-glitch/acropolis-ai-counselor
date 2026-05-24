@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UIMessage } from "ai";
-import { syncThreadToSupabase } from "@/lib/chat-sync";
+import { syncInquiryMessages, syncThreadToSupabase } from "@/lib/chat-sync";
 
 export type ChatThread = {
   id: string;
@@ -89,7 +89,10 @@ export function useThreads() {
           return { ...t, messages, title, updatedAt: Date.now() };
         });
         const updated = next.find((t) => t.id === id);
-        if (updated) void syncThreadToSupabase(id, updated.title, messages);
+        if (updated) {
+          void syncThreadToSupabase(id, updated.title, messages);
+          void syncInquiryMessages(id, messages);
+        }
         return next;
       });
     },
