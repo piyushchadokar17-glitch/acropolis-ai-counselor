@@ -50,8 +50,14 @@ export function ChatWindow({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
   const [listening, setListening] = useState(false);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
+  const [levels, setLevels] = useState<number[]>(() => Array(16).fill(0.15));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   // persist
   useEffect(() => {
@@ -90,9 +96,65 @@ export function ChatWindow({
     const utter = new SpeechSynthesisUtterance(text);
     utter.rate = 1.05;
     utter.pitch = 1.0;
+    utter.onstart = () => setAiSpeaking(true);
+    utter.onend = () => setAiSpeaking(false);
+    utter.onerror = () => setAiSpeaking(false);
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
   }, [messages, status, voiceOn]);
+
+  // Cleanup audio analyser on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      void audioCtxRef.current?.close().catch(() => {});
+    };
+  }, []);
+
+  const stopVisualizer = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    analyserRef.current = null;
+    void audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    setLevels(Array(16).fill(0.15));
+  }, []);
+
+  const startVisualizer = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AC: typeof AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AC();
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      src.connect(analyser);
+      analyserRef.current = analyser;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+
+      const tick = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(data);
+        const bars: number[] = [];
+        const step = Math.floor(data.length / 16) || 1;
+        for (let i = 0; i < 16; i++) {
+          const v = data[i * step] / 255;
+          bars.push(Math.max(0.12, Math.min(1, v * 1.4)));
+        }
+        setLevels(bars);
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (err) {
+      console.warn("[voice] mic visualizer unavailable", err);
+    }
+  }, []);
 
   const toggleMic = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -105,6 +167,7 @@ export function ChatWindow({
     if (listening) {
       recognitionRef.current?.stop();
       setListening(false);
+      stopVisualizer();
       return;
     }
     const rec = new SR();
@@ -117,12 +180,13 @@ export function ChatWindow({
       for (let i = e.resultIndex; i < e.results.length; i++) text += e.results[i][0].transcript;
       setInput(text);
     };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
+    rec.onend = () => { setListening(false); stopVisualizer(); };
+    rec.onerror = () => { setListening(false); stopVisualizer(); };
     rec.start();
     recognitionRef.current = rec;
     setListening(true);
-  }, [listening]);
+    void startVisualizer();
+  }, [listening, startVisualizer, stopVisualizer]);
 
   const handleSubmit = async ({ text }: { text: string; files: unknown[] }) => {
     const value = text.trim();
