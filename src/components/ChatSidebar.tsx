@@ -19,6 +19,7 @@ import {
 import type { ChatThread } from "@/hooks/use-threads";
 import { AcropolisLogo } from "@/components/AcropolisLogo";
 import { useAuth } from "@/hooks/use-auth";
+import { useInquiry } from "@/hooks/use-inquiry";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -144,14 +145,46 @@ export function ChatSidebar({
 
 function AccountRow() {
   const { user, signOut } = useAuth();
+  const { inquiry, clear: clearInquiry } = useInquiry();
+  const navigate = useNavigate();
+
+  const handleSwitchStudent = () => {
+    clearInquiry();
+    void navigate({ to: "/chat" });
+    if (typeof window !== "undefined") {
+      // Force a clean reload so all in-memory thread state resets too.
+      setTimeout(() => window.location.reload(), 50);
+    }
+  };
+
   if (!user) {
     return (
-      <Link
-        to="/auth"
-        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
-      >
-        <LogIn className="size-3.5" /> Sign in to sync
-      </Link>
+      <div className="space-y-1">
+        {inquiry && (
+          <div className="flex items-center gap-2 rounded-lg px-2 py-2">
+            <div className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] text-white">
+              <UserIcon className="size-3.5" />
+            </div>
+            <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+              {inquiry.email}
+            </div>
+            <button
+              onClick={handleSwitchStudent}
+              aria-label="Switch student"
+              title="Switch student / start new inquiry"
+              className="rounded p-1 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+            >
+              <LogOut className="size-3.5" />
+            </button>
+          </div>
+        )}
+        <Link
+          to="/auth"
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+        >
+          <LogIn className="size-3.5" /> Sign in to sync
+        </Link>
+      </div>
     );
   }
   return (
