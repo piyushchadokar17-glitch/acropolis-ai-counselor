@@ -10,6 +10,7 @@ export type Inquiry = {
 };
 
 const KEY = "collegegpt:inquiry";
+const THREADS_KEY = "collegegpt.threads.v1";
 
 function read(): Inquiry | null {
   if (typeof window === "undefined") return null;
@@ -18,6 +19,19 @@ function read(): Inquiry | null {
     return raw ? (JSON.parse(raw) as Inquiry) : null;
   } catch {
     return null;
+  }
+}
+
+/** Wipe any per-student state so the new inquiry starts with a fresh slate. */
+function resetStudentState() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(THREADS_KEY);
+    // Best-effort: end any cached Supabase session so the new student
+    // isn't accidentally attributed to a previously signed-in user.
+    void supabase.auth.signOut().catch(() => {});
+  } catch {
+    // ignore
   }
 }
 
@@ -37,18 +51,24 @@ export function useInquiry() {
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const createdAt = new Date().toISOString();
+      const email = input.email.trim().toLowerCase();
+
+      // If a different student is starting an inquiry on this device,
+      // purge the previous student's local chat threads + cached session.
+      const prev = read();
+      if (!prev || prev.email !== email) {
+        resetStudentState();
+      }
 
       const payload = {
         id,
         name: input.name.trim(),
-        email: input.email.trim().toLowerCase(),
+        email,
         course_interest: input.course?.trim() || null,
         message: input.message ?? "Started chatbot inquiry",
         source: "chatbot",
       };
 
-      // RLS allows anon INSERT but not SELECT-back, so we skip .select()
-      // and use the client-generated id instead.
       const { error } = await supabase.from("leads").insert(payload);
       if (error) {
         console.error("[inquiry] lead insert failed", error);
@@ -71,6 +91,7 @@ export function useInquiry() {
 
   const clear = useCallback(() => {
     localStorage.removeItem(KEY);
+    resetStudentState();
     setInquiry(null);
   }, []);
 
