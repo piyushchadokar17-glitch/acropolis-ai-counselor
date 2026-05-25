@@ -216,7 +216,14 @@ export function ChatWindow({
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="inline-block size-1.5 animate-pulse rounded-full bg-accent" />
-              AI online · Admission Counselor
+              {aiSpeaking ? (
+                <span className="inline-flex items-center gap-1.5 text-accent">
+                  Speaking
+                  <span className="eq-bars"><span /><span /><span /><span /><span /></span>
+                </span>
+              ) : (
+                <span>AI online · Admission Counselor</span>
+              )}
             </div>
           </div>
         </div>
@@ -224,7 +231,7 @@ export function ChatWindow({
         <button
           onClick={() => {
             setVoiceOn((v) => !v);
-            if (voiceOn) window.speechSynthesis?.cancel();
+            if (voiceOn) { window.speechSynthesis?.cancel(); setAiSpeaking(false); }
           }}
           className={cn(
             "glass flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition",
