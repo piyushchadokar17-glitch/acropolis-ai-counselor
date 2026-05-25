@@ -19,6 +19,7 @@ import {
 import type { ChatThread } from "@/hooks/use-threads";
 import { AcropolisLogo } from "@/components/AcropolisLogo";
 import { useAuth } from "@/hooks/use-auth";
+import { useInquiry } from "@/hooks/use-inquiry";
 import { cn } from "@/lib/utils";
 
 const nav = [
