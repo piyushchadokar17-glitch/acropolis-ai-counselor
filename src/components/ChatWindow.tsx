@@ -50,8 +50,14 @@ export function ChatWindow({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
   const [listening, setListening] = useState(false);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
+  const [levels, setLevels] = useState<number[]>(() => Array(16).fill(0.15));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   // persist
   useEffect(() => {
@@ -90,9 +96,65 @@ export function ChatWindow({
     const utter = new SpeechSynthesisUtterance(text);
     utter.rate = 1.05;
     utter.pitch = 1.0;
+    utter.onstart = () => setAiSpeaking(true);
+    utter.onend = () => setAiSpeaking(false);
+    utter.onerror = () => setAiSpeaking(false);
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
   }, [messages, status, voiceOn]);
+
+  // Cleanup audio analyser on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      void audioCtxRef.current?.close().catch(() => {});
+    };
+  }, []);
+
+  const stopVisualizer = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    analyserRef.current = null;
+    void audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    setLevels(Array(16).fill(0.15));
+  }, []);
+
+  const startVisualizer = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AC: typeof AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AC();
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      src.connect(analyser);
+      analyserRef.current = analyser;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+
+      const tick = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(data);
+        const bars: number[] = [];
+        const step = Math.floor(data.length / 16) || 1;
+        for (let i = 0; i < 16; i++) {
+          const v = data[i * step] / 255;
+          bars.push(Math.max(0.12, Math.min(1, v * 1.4)));
+        }
+        setLevels(bars);
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (err) {
+      console.warn("[voice] mic visualizer unavailable", err);
+    }
+  }, []);
 
   const toggleMic = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -105,6 +167,7 @@ export function ChatWindow({
     if (listening) {
       recognitionRef.current?.stop();
       setListening(false);
+      stopVisualizer();
       return;
     }
     const rec = new SR();
@@ -117,12 +180,13 @@ export function ChatWindow({
       for (let i = e.resultIndex; i < e.results.length; i++) text += e.results[i][0].transcript;
       setInput(text);
     };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
+    rec.onend = () => { setListening(false); stopVisualizer(); };
+    rec.onerror = () => { setListening(false); stopVisualizer(); };
     rec.start();
     recognitionRef.current = rec;
     setListening(true);
-  }, [listening]);
+    void startVisualizer();
+  }, [listening, startVisualizer, stopVisualizer]);
 
   const handleSubmit = async ({ text }: { text: string; files: unknown[] }) => {
     const value = text.trim();
@@ -152,7 +216,14 @@ export function ChatWindow({
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="inline-block size-1.5 animate-pulse rounded-full bg-accent" />
-              AI online · Admission Counselor
+              {aiSpeaking ? (
+                <span className="inline-flex items-center gap-1.5 text-accent">
+                  Speaking
+                  <span className="eq-bars"><span /><span /><span /><span /><span /></span>
+                </span>
+              ) : (
+                <span>AI online · Admission Counselor</span>
+              )}
             </div>
           </div>
         </div>
@@ -160,7 +231,7 @@ export function ChatWindow({
         <button
           onClick={() => {
             setVoiceOn((v) => !v);
-            if (voiceOn) window.speechSynthesis?.cancel();
+            if (voiceOn) { window.speechSynthesis?.cancel(); setAiSpeaking(false); }
           }}
           className={cn(
             "glass flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition",
@@ -249,13 +320,45 @@ export function ChatWindow({
       {/* Composer */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-4 pb-5 pt-10">
         <div className="pointer-events-auto mx-auto w-full max-w-3xl">
+          <AnimatePresence>
+            {listening && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="glass mb-2 flex items-center justify-between gap-3 rounded-2xl border border-accent/20 px-4 py-2.5 ring-1 ring-accent/30 shadow-[0_0_30px_oklch(0.78_0.15_200/0.25)]"
+              >
+                <div className="flex items-center gap-2 text-xs text-accent">
+                  <span className="relative flex size-2">
+                    <span className="absolute inset-0 animate-ping rounded-full bg-accent/70" />
+                    <span className="relative size-2 rounded-full bg-accent" />
+                  </span>
+                  Listening…
+                </div>
+                <div className="wave-bars" aria-hidden>
+                  {levels.map((v, i) => (
+                    <span key={i} style={{ ["--bar" as string]: String(v) }} />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleMic}
+                  className="text-[11px] text-muted-foreground transition hover:text-foreground"
+                >
+                  Stop
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="composer-glow glass-strong relative rounded-3xl p-1.5 ring-1 ring-white/10 shadow-[0_0_40px_oklch(0.62_0.22_285/0.15)]">
+            {listening && <div className="voice-halo" aria-hidden />}
             <PromptInput onSubmit={handleSubmit} className="bg-transparent">
               <PromptInputTextarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.currentTarget.value)}
-                placeholder="Inquire about admissions, courses, or campus life…"
+                placeholder={listening ? "Listening — speak now…" : "Inquire about admissions, courses, or campus life…"}
                 className="min-h-[56px] bg-transparent text-base placeholder:text-muted-foreground/70"
               />
               <PromptInputFooter className="justify-between px-2 pb-1.5">
@@ -266,7 +369,7 @@ export function ChatWindow({
                   className={cn(
                     "relative grid size-9 place-items-center rounded-full transition-all duration-300",
                     listening
-                      ? "bg-gradient-to-br from-[oklch(0.78_0.15_200)] to-[oklch(0.62_0.22_285)] text-white animate-pulse-ring shadow-[0_0_25px_oklch(0.78_0.15_200/0.65)]"
+                      ? "mic-rings bg-gradient-to-br from-[oklch(0.78_0.15_200)] to-[oklch(0.62_0.22_285)] text-white shadow-[0_0_30px_oklch(0.78_0.15_200/0.75)]"
                       : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground hover:shadow-[0_0_16px_oklch(0.78_0.15_200/0.3)]",
                   )}
                 >
