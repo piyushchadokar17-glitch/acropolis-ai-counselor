@@ -320,13 +320,45 @@ export function ChatWindow({
       {/* Composer */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-4 pb-5 pt-10">
         <div className="pointer-events-auto mx-auto w-full max-w-3xl">
+          <AnimatePresence>
+            {listening && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="glass mb-2 flex items-center justify-between gap-3 rounded-2xl border border-accent/20 px-4 py-2.5 ring-1 ring-accent/30 shadow-[0_0_30px_oklch(0.78_0.15_200/0.25)]"
+              >
+                <div className="flex items-center gap-2 text-xs text-accent">
+                  <span className="relative flex size-2">
+                    <span className="absolute inset-0 animate-ping rounded-full bg-accent/70" />
+                    <span className="relative size-2 rounded-full bg-accent" />
+                  </span>
+                  Listening…
+                </div>
+                <div className="wave-bars" aria-hidden>
+                  {levels.map((v, i) => (
+                    <span key={i} style={{ ["--bar" as string]: String(v) }} />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleMic}
+                  className="text-[11px] text-muted-foreground transition hover:text-foreground"
+                >
+                  Stop
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="composer-glow glass-strong relative rounded-3xl p-1.5 ring-1 ring-white/10 shadow-[0_0_40px_oklch(0.62_0.22_285/0.15)]">
+            {listening && <div className="voice-halo" aria-hidden />}
             <PromptInput onSubmit={handleSubmit} className="bg-transparent">
               <PromptInputTextarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.currentTarget.value)}
-                placeholder="Inquire about admissions, courses, or campus life…"
+                placeholder={listening ? "Listening — speak now…" : "Inquire about admissions, courses, or campus life…"}
                 className="min-h-[56px] bg-transparent text-base placeholder:text-muted-foreground/70"
               />
               <PromptInputFooter className="justify-between px-2 pb-1.5">
@@ -337,7 +369,7 @@ export function ChatWindow({
                   className={cn(
                     "relative grid size-9 place-items-center rounded-full transition-all duration-300",
                     listening
-                      ? "bg-gradient-to-br from-[oklch(0.78_0.15_200)] to-[oklch(0.62_0.22_285)] text-white animate-pulse-ring shadow-[0_0_25px_oklch(0.78_0.15_200/0.65)]"
+                      ? "mic-rings bg-gradient-to-br from-[oklch(0.78_0.15_200)] to-[oklch(0.62_0.22_285)] text-white shadow-[0_0_30px_oklch(0.78_0.15_200/0.75)]"
                       : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground hover:shadow-[0_0_16px_oklch(0.78_0.15_200/0.3)]",
                   )}
                 >
