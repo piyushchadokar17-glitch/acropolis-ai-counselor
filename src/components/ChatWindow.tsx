@@ -319,7 +319,7 @@ export function ChatWindow({
       </div>
 
       {/* Composer */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-4 pb-5 pt-10">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6 sm:px-4">
         <div className="pointer-events-auto mx-auto w-full max-w-3xl">
           <AnimatePresence>
             {listening && (
