@@ -48,8 +48,88 @@ export const Route = createFileRoute("/admin")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
-  component: AdminDashboard,
+  component: AdminGate,
 });
+
+function AdminGate() {
+  const [state, setState] = useState<"checking" | "ok" | "unauth" | "forbidden">("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!userRes.user) {
+        setState("unauth");
+        return;
+      }
+      const { data: roleRow, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userRes.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !roleRow) setState("forbidden");
+      else setState("ok");
+    };
+    void check();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      void check();
+    });
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (state === "checking") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background text-muted-foreground">
+        <div className="flex items-center gap-3 text-sm">
+          <Loader2 className="size-4 animate-spin" /> Verifying admin access…
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "unauth") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-4 text-center">
+        <div className="glass-strong max-w-md rounded-3xl p-8 ring-1 ring-white/10">
+          <h1 className="font-display text-2xl font-bold">Admin sign-in required</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Please sign in with your admin account to access the dashboard.
+          </p>
+          <Link
+            to="/auth"
+            className="mt-5 inline-flex rounded-xl bg-gradient-to-r from-[oklch(0.62_0.22_285)] to-[oklch(0.78_0.15_200)] px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            Go to sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "forbidden") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-4 text-center">
+        <div className="glass-strong max-w-md rounded-3xl p-8 ring-1 ring-white/10">
+          <h1 className="font-display text-2xl font-bold">Access denied</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Your account doesn't have admin privileges. Contact the Acropolis Admission Cell if this is a mistake.
+          </p>
+          <Link to="/" className="mt-5 inline-flex text-sm text-accent hover:underline">
+            ← Back to home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return <AdminDashboard />;
+}
 
 type Lead = {
   id: string;

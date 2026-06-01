@@ -71,8 +71,10 @@ export function useInquiry() {
 
       const { error } = await supabase.from("leads").insert(payload);
       if (error) {
-        console.error("[inquiry] lead insert failed", error);
-        throw new Error(error.message || "Could not save your details.");
+        // Best-effort: don't block the student from chatting if the lead
+        // insert fails (RLS, network, etc.). The Admission Cell still gets
+        // the conversation via inquiry_messages once chat starts.
+        console.warn("[inquiry] lead insert failed, continuing locally", error);
       }
 
       const record: Inquiry = {
