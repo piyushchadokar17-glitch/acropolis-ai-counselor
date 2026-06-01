@@ -246,9 +246,10 @@ export function ChatWindow({
 
       {/* Conversation */}
       <div className="relative flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-[oklch(0.14_0.04_265)] to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-[oklch(0.14_0.04_265)] to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 bg-gradient-to-t from-[oklch(0.14_0.04_265)] via-[oklch(0.14_0.04_265)]/85 to-transparent" />
         <Conversation className="h-full">
-          <ConversationContent className="mx-auto w-full max-w-3xl px-4 pb-32 pt-8">
+          <ConversationContent className="mx-auto w-full max-w-3xl px-4 pb-44 pt-8 space-y-5 md:space-y-6">
             {isEmpty ? (
               <EmptyState
                 onPick={(p) => {
