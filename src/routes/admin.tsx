@@ -454,11 +454,12 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
 
         {/* Management tabs */}
         <Tabs defaultValue="leads" className="space-y-4">
-          <TabsList className="bg-card/40 backdrop-blur-xl">
+          <TabsList className="flex-wrap bg-card/40 backdrop-blur-xl">
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="notices">Notices</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="pdfs">PDFs</TabsTrigger>
+            <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
           </TabsList>
 
           <TabsContent value="leads">
@@ -473,7 +474,11 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
           <TabsContent value="pdfs">
             <PdfsPanel pdfs={pdfs} onChange={refresh} />
           </TabsContent>
+          <TabsContent value="knowledge">
+            <KnowledgePanel entries={kb} onChange={refresh} />
+          </TabsContent>
         </Tabs>
+
       </main>
     </div>
   );
