@@ -1,10 +1,14 @@
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, Sparkles, User } from "lucide-react";
-import { useState } from "react";
 import { AcropolisLogo } from "@/components/AcropolisLogo";
 import { ParticleField } from "@/components/ParticleField";
 import { Button } from "@/components/ui/button";
 import { useInquiry, type Inquiry } from "@/hooks/use-inquiry";
+
+const ADMIN_EMAIL = "piyushchadokar06@gmail.com";
+const ADMIN_BYPASS_KEY = "collegegpt:adminBypass";
 
 const COURSES = [
   "B.Tech — CSE",
