@@ -1,10 +1,14 @@
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, Sparkles, User } from "lucide-react";
-import { useState } from "react";
 import { AcropolisLogo } from "@/components/AcropolisLogo";
 import { ParticleField } from "@/components/ParticleField";
 import { Button } from "@/components/ui/button";
 import { useInquiry, type Inquiry } from "@/hooks/use-inquiry";
+
+const ADMIN_EMAIL = "piyushchadokar06@gmail.com";
+const ADMIN_BYPASS_KEY = "collegegpt:adminBypass";
 
 const COURSES = [
   "B.Tech — CSE",
@@ -31,6 +35,7 @@ export function InquiryGate({
   onReady?: (i: Inquiry) => void;
 }) {
   const { inquiry, ready, save } = useInquiry();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [course, setCourse] = useState("");
@@ -49,6 +54,13 @@ export function InquiryGate({
     setError(null);
     setLoading(true);
     try {
+      const trimmedEmail = email.trim().toLowerCase();
+      // Admin bypass: redirect directly to dashboard
+      if (trimmedEmail === ADMIN_EMAIL) {
+        localStorage.setItem(ADMIN_BYPASS_KEY, JSON.stringify({ email: trimmedEmail, ts: Date.now() }));
+        navigate({ to: "/admin" });
+        return;
+      }
       const rec = await save({ name, email, course: course || undefined });
       onReady?.(rec);
     } catch (err) {

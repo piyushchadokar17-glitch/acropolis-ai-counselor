@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -18,6 +18,7 @@ import {
   Mail,
   Phone,
   Plus,
+  LogOut,
 } from "lucide-react";
 import {
   Area,
@@ -40,6 +41,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
+const ADMIN_EMAIL = "piyushchadokar06@gmail.com";
+const ADMIN_BYPASS_KEY = "collegegpt:adminBypass";
+
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
@@ -52,11 +56,26 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminGate() {
+  const navigate = useNavigate();
   const [state, setState] = useState<"checking" | "ok" | "unauth" | "forbidden">("checking");
 
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
+      // Check localStorage admin bypass first (onboarding auto-redirect)
+      try {
+        const raw = localStorage.getItem(ADMIN_BYPASS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.email === ADMIN_EMAIL) {
+            setState("ok");
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
       const { data: userRes } = await supabase.auth.getUser();
       if (cancelled) return;
       if (!userRes.user) {
@@ -82,6 +101,12 @@ function AdminGate() {
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleLogout = async () => {
+    localStorage.removeItem(ADMIN_BYPASS_KEY);
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
+  };
 
   if (state === "checking") {
     return (
@@ -128,7 +153,7 @@ function AdminGate() {
     );
   }
 
-  return <AdminDashboard />;
+  return <AdminDashboard onLogout={handleLogout} />;
 }
 
 type Lead = {
@@ -174,7 +199,7 @@ type Pdf = {
   created_at: string;
 };
 
-function AdminDashboard() {
+function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -302,6 +327,11 @@ function AdminDashboard() {
             <Link to="/">
               <Button size="sm" variant="ghost">Back to app</Button>
             </Link>
+            {onLogout && (
+              <Button size="sm" variant="ghost" onClick={onLogout} className="text-red-400 hover:text-red-300">
+                <LogOut className="mr-1 h-4 w-4" /> Logout
+              </Button>
+            )}
           </div>
         </div>
       </header>
