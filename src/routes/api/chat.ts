@@ -3,6 +3,118 @@ import "@tanstack/react-start";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway";
 
+// In-memory cache so we don't query Supabase on every streamed token request.
+type KbCache = { ts: number; text: string };
+let kbCache: KbCache | null = null;
+const KB_TTL_MS = 60 * 1000; // 1 minute — admin edits propagate fast
+
+async function buildKnowledgeContext(): Promise<string> {
+  if (kbCache && Date.now() - kbCache.ts < KB_TTL_MS) return kbCache.text;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const nowIso = new Date().toISOString();
+    const [coursesRes, noticesRes, kbRes, pdfsRes] = await Promise.all([
+      supabaseAdmin.from("courses").select("*").order("name"),
+      supabaseAdmin
+        .from("notices")
+        .select("*")
+        .or(`scheduled_for.is.null,scheduled_for.lte.${nowIso}`)
+        .order("pinned", { ascending: false })
+        .order("published_at", { ascending: false })
+        .limit(20),
+      supabaseAdmin
+        .from("knowledge_entries")
+        .select("section,title,content,pinned")
+        .order("pinned", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(120),
+      supabaseAdmin
+        .from("pdf_documents")
+        .select("title,category,description,storage_path")
+        .order("created_at", { ascending: false })
+        .limit(40),
+    ]);
+
+    const parts: string[] = [];
+
+    if (kbRes.data?.length) {
+      const bySection = new Map<string, typeof kbRes.data>();
+      for (const e of kbRes.data) {
+        const s = (e.section || "general").toLowerCase();
+        if (!bySection.has(s)) bySection.set(s, [] as any);
+        bySection.get(s)!.push(e);
+      }
+      const sectionOrder = [
+        "admissions",
+        "fees",
+        "hostel",
+        "placements",
+        "scholarships",
+        "faq",
+        "general",
+      ];
+      const sorted = [...bySection.keys()].sort(
+        (a, b) =>
+          (sectionOrder.indexOf(a) === -1 ? 99 : sectionOrder.indexOf(a)) -
+          (sectionOrder.indexOf(b) === -1 ? 99 : sectionOrder.indexOf(b)),
+      );
+      for (const sec of sorted) {
+        parts.push(`### ${sec.toUpperCase()}`);
+        for (const e of bySection.get(sec)!) {
+          parts.push(`- **${e.title}**${e.pinned ? " 📌" : ""}: ${e.content}`);
+        }
+      }
+    }
+
+    if (coursesRes.data?.length) {
+      parts.push("### COURSES (live catalog)");
+      for (const c of coursesRes.data) {
+        const bits = [
+          c.code && `\`${c.code}\``,
+          c.name,
+          c.level,
+          c.department,
+          c.duration_years && `${c.duration_years} yrs`,
+          c.seats && `${c.seats} seats`,
+          c.fees_per_year && `₹${Number(c.fees_per_year).toLocaleString()}/yr`,
+          c.eligibility && `eligibility: ${c.eligibility}`,
+        ].filter(Boolean);
+        parts.push(`- ${bits.join(" • ")}`);
+      }
+    }
+
+    if (noticesRes.data?.length) {
+      parts.push("### LIVE NOTICES");
+      for (const n of noticesRes.data) {
+        const tag = [n.urgent && "🚨URGENT", n.pinned && "📌", n.category].filter(Boolean).join(" ");
+        parts.push(`- ${tag ? tag + " — " : ""}**${n.title}**${n.body ? `: ${n.body}` : ""}`);
+      }
+    }
+
+    if (pdfsRes.data?.length) {
+      const baseUrl = process.env.SUPABASE_URL?.replace(/\/$/, "");
+      parts.push("### OFFICIAL PDFs (share links when relevant)");
+      for (const p of pdfsRes.data) {
+        const url = baseUrl
+          ? `${baseUrl}/storage/v1/object/public/pdfs/${p.storage_path}`
+          : p.storage_path;
+        parts.push(`- ${p.category ? `[${p.category}] ` : ""}**${p.title}** — ${url}${p.description ? ` (${p.description})` : ""}`);
+      }
+    }
+
+    const text = parts.length
+      ? `\n\n────────────────────────────────────────\nADMIN-MANAGED COLLEGE KNOWLEDGE BASE (authoritative — prefer this over generic answers)\n────────────────────────────────────────\n${parts.join("\n")}\n`
+      : "";
+    kbCache = { ts: Date.now(), text };
+    return text;
+  } catch (err) {
+    console.warn("[chat] knowledge fetch failed", err);
+    return "";
+  }
+}
+
+
+
 const SYSTEM_PROMPT = `You are **CollegeGPT** — the official AI Admission Counselor for **Acropolis Institute of Technology and Research (AITR), Indore** (NAAC A++, NBA accredited, affiliated to RGPV Bhopal & AICTE approved). You speak like a warm, experienced senior counselor from the Admission Cell: calm, precise, encouraging, and genuinely invested in the student's future.
 
 ────────────────────────────────────────
@@ -72,12 +184,14 @@ export const Route = createFileRoute("/api/chat")({
         const model = gateway("google/gemini-2.5-flash");
 
         try {
+          const kb = await buildKnowledgeContext();
           const result = streamText({
             model,
-            system: SYSTEM_PROMPT,
+            system: SYSTEM_PROMPT + kb,
             messages: await convertToModelMessages(messages as UIMessage[]),
             temperature: 0.75,
           });
+
           return result.toUIMessageStreamResponse({
             originalMessages: messages as UIMessage[],
           });

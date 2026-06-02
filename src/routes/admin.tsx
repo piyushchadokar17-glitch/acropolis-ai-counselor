@@ -174,7 +174,19 @@ type Notice = {
   category: string | null;
   pinned: boolean;
   published_at: string;
+  urgent?: boolean | null;
+  scheduled_for?: string | null;
 };
+
+type KbEntry = {
+  id: string;
+  section: string;
+  title: string;
+  content: string;
+  pinned: boolean;
+  updated_at: string;
+};
+
 
 type Course = {
   id: string;
@@ -204,26 +216,30 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [pdfs, setPdfs] = useState<Pdf[]>([]);
+  const [kb, setKb] = useState<KbEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
     setLoading(true);
-    const [l, n, c, p] = await Promise.all([
+    const [l, n, c, p, k] = await Promise.all([
       supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("notices").select("*").order("published_at", { ascending: false }),
       supabase.from("courses").select("*").order("name"),
       supabase.from("pdf_documents").select("*").order("created_at", { ascending: false }),
+      supabase.from("knowledge_entries").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false }),
     ]);
     if (l.data) setLeads(l.data as Lead[]);
     if (n.data) setNotices(n.data as Notice[]);
     if (c.data) setCourses(c.data as Course[]);
     if (p.data) setPdfs(p.data as Pdf[]);
+    if (k.data) setKb(k.data as KbEntry[]);
     setLoading(false);
   };
 
   useEffect(() => {
     void refresh();
   }, []);
+
 
   // Analytics: leads per day for last 14 days
   const leadSeries = useMemo(() => {
@@ -438,11 +454,12 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
 
         {/* Management tabs */}
         <Tabs defaultValue="leads" className="space-y-4">
-          <TabsList className="bg-card/40 backdrop-blur-xl">
+          <TabsList className="flex-wrap bg-card/40 backdrop-blur-xl">
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="notices">Notices</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="pdfs">PDFs</TabsTrigger>
+            <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
           </TabsList>
 
           <TabsContent value="leads">
@@ -457,7 +474,11 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
           <TabsContent value="pdfs">
             <PdfsPanel pdfs={pdfs} onChange={refresh} />
           </TabsContent>
+          <TabsContent value="knowledge">
+            <KnowledgePanel entries={kb} onChange={refresh} />
+          </TabsContent>
         </Tabs>
+
       </main>
     </div>
   );
@@ -598,29 +619,49 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [urgent, setUrgent] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState("");
   const [busy, setBusy] = useState(false);
 
   const add = async () => {
     if (!title.trim()) return toast.error("Title required");
     setBusy(true);
-    const { error } = await supabase.from("notices").insert({
+    const payload: {
+      title: string;
+      body: string | null;
+      category: string | null;
+      pinned: boolean;
+      urgent: boolean;
+      scheduled_for?: string;
+      published_at?: string;
+    } = {
       title: title.trim(),
       body: body.trim() || null,
       category: category.trim() || null,
       pinned,
-    });
+      urgent,
+    };
+    if (scheduledFor) {
+      payload.scheduled_for = new Date(scheduledFor).toISOString();
+      payload.published_at = new Date(scheduledFor).toISOString();
+    }
+    const { error } = await supabase.from("notices").insert(payload);
+
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Notice published");
-    setTitle("");
-    setBody("");
-    setCategory("");
-    setPinned(false);
+    toast.success(scheduledFor ? "Notice scheduled" : "Notice published");
+    setTitle(""); setBody(""); setCategory(""); setPinned(false); setUrgent(false); setScheduledFor("");
     onChange();
   };
 
   const togglePin = async (n: Notice) => {
     const { error } = await supabase.from("notices").update({ pinned: !n.pinned }).eq("id", n.id);
+    if (error) return toast.error(error.message);
+    onChange();
+  };
+
+  const toggleUrgent = async (n: Notice) => {
+    const { error } = await supabase.from("notices").update({ urgent: !n.urgent }).eq("id", n.id);
     if (error) return toast.error(error.message);
     onChange();
   };
@@ -644,43 +685,60 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
           </div>
           <div>
             <Label className="text-xs">Category</Label>
-            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="admissions, events, exams…" />
+            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="admissions, exam, placement, holiday, event…" />
           </div>
           <div>
             <Label className="text-xs">Body</Label>
             <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Details…" rows={5} />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
-            Pin to top
-          </label>
+          <div>
+            <Label className="text-xs">Schedule (optional)</Label>
+            <Input type="datetime-local" value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+              Pin to top
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
+              Mark urgent
+            </label>
+          </div>
           <Button onClick={add} disabled={busy} className="w-full">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" /> Publish</>}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" /> {scheduledFor ? "Schedule" : "Publish"}</>}
           </Button>
         </div>
       </GlassCard>
 
       <GlassCard className="lg:col-span-3">
         <h2 className="mb-3 font-display text-base font-semibold">Notices ({notices.length})</h2>
-        <div className="max-h-[480px] space-y-3 overflow-auto pr-1">
+        <div className="max-h-[520px] space-y-3 overflow-auto pr-1">
           {notices.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">No notices yet.</p>
           )}
           {notices.map((n) => (
-            <div key={n.id} className="rounded-xl border border-border/60 bg-background/30 p-4">
+            <div key={n.id} className={`rounded-xl border p-4 ${n.urgent ? "border-red-500/40 bg-red-500/5" : "border-border/60 bg-background/30"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {n.pinned && <Pin className="h-3.5 w-3.5 text-accent" />}
+                    {n.urgent && <Badge variant="destructive" className="text-[10px]">URGENT</Badge>}
                     <h3 className="font-medium">{n.title}</h3>
                     {n.category && <Badge variant="secondary" className="text-[10px]">{n.category}</Badge>}
                   </div>
-                  {n.body && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{n.body}</p>}
+                  {n.body && <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{n.body}</p>}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {new Date(n.published_at).toLocaleDateString()}
+                    {new Date(n.published_at).toLocaleString()}
+                    {n.scheduled_for && new Date(n.scheduled_for) > new Date() && (
+                      <span className="ml-2 text-accent">• scheduled</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => toggleUrgent(n)} title="Toggle urgent">
+                    <Megaphone className={`h-4 w-4 ${n.urgent ? "text-red-400" : ""}`} />
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => togglePin(n)} title="Toggle pin">
                     <Pin className={`h-4 w-4 ${n.pinned ? "text-accent" : ""}`} />
                   </Button>
@@ -696,6 +754,7 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
     </div>
   );
 }
+
 
 /* ---------------- Courses ---------------- */
 
@@ -981,3 +1040,148 @@ function PdfsPanel({ pdfs, onChange }: { pdfs: Pdf[]; onChange: () => void }) {
     </div>
   );
 }
+
+/* ---------------- Knowledge Base ---------------- */
+
+const KB_SECTIONS = [
+  { value: "admissions", label: "Admissions" },
+  { value: "fees", label: "Fees" },
+  { value: "hostel", label: "Hostel" },
+  { value: "placements", label: "Placements" },
+  { value: "scholarships", label: "Scholarships" },
+  { value: "faq", label: "FAQs" },
+  { value: "general", label: "General" },
+];
+
+function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: () => void }) {
+  const [section, setSection] = useState("admissions");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [pinned, setPinned] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState<string>("all");
+
+  const add = async () => {
+    if (!title.trim() || !content.trim()) return toast.error("Title and content required");
+    setBusy(true);
+    const { error } = await supabase.from("knowledge_entries").insert({
+      section,
+      title: title.trim(),
+      content: content.trim(),
+      pinned,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Saved to knowledge base — chatbot will use it");
+    setTitle(""); setContent(""); setPinned(false);
+    onChange();
+  };
+
+  const togglePin = async (e: KbEntry) => {
+    const { error } = await supabase.from("knowledge_entries").update({ pinned: !e.pinned }).eq("id", e.id);
+    if (error) return toast.error(error.message);
+    onChange();
+  };
+
+  const remove = async (e: KbEntry) => {
+    if (!confirm(`Delete "${e.title}"?`)) return;
+    const { error } = await supabase.from("knowledge_entries").delete().eq("id", e.id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    onChange();
+  };
+
+  const visible = filter === "all" ? entries : entries.filter((e) => e.section === filter);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <GlassCard className="lg:col-span-2">
+        <h2 className="mb-1 font-display text-base font-semibold">Add knowledge entry</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Anything saved here is automatically fed to CollegeGPT as authoritative college info.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Section</Label>
+            <select
+              value={section}
+              onChange={(e) => setSection(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background/40 px-3 py-1 text-sm"
+            >
+              {KB_SECTIONS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs">Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. B.Tech eligibility 2026" />
+          </div>
+          <div>
+            <Label className="text-xs">Content</Label>
+            <Textarea
+              rows={6}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Plain text or short markdown. Be precise — the chatbot will quote this."
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+            Pin (chatbot prioritizes pinned entries)
+          </label>
+          <Button onClick={add} disabled={busy} className="w-full">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" /> Save entry</>}
+          </Button>
+        </div>
+      </GlassCard>
+
+      <GlassCard className="lg:col-span-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-base font-semibold">Entries ({visible.length})</h2>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+          >
+            <option value="all">All sections</option>
+            {KB_SECTIONS.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
+          {visible.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">No entries yet for this section.</p>
+          )}
+          {visible.map((e) => (
+            <div key={e.id} className="rounded-xl border border-border/60 bg-background/30 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] uppercase">{e.section}</Badge>
+                    {e.pinned && <Pin className="h-3.5 w-3.5 text-accent" />}
+                    <span className="font-medium">{e.title}</span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground line-clamp-4">{e.content}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Updated {new Date(e.updated_at).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => togglePin(e)} title="Toggle pin">
+                    <Pin className={`h-4 w-4 ${e.pinned ? "text-accent" : ""}`} />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(e)} title="Delete">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
