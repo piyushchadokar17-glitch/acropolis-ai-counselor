@@ -626,7 +626,15 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
   const add = async () => {
     if (!title.trim()) return toast.error("Title required");
     setBusy(true);
-    const payload: Record<string, unknown> = {
+    const payload: {
+      title: string;
+      body: string | null;
+      category: string | null;
+      pinned: boolean;
+      urgent: boolean;
+      scheduled_for?: string;
+      published_at?: string;
+    } = {
       title: title.trim(),
       body: body.trim() || null,
       category: category.trim() || null,
@@ -638,6 +646,7 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
       payload.published_at = new Date(scheduledFor).toISOString();
     }
     const { error } = await supabase.from("notices").insert(payload);
+
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(scheduledFor ? "Notice scheduled" : "Notice published");
