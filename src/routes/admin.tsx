@@ -199,7 +199,7 @@ type Pdf = {
   created_at: string;
 };
 
-function AdminDashboard() {
+function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
