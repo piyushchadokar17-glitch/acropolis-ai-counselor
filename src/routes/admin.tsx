@@ -1040,3 +1040,148 @@ function PdfsPanel({ pdfs, onChange }: { pdfs: Pdf[]; onChange: () => void }) {
     </div>
   );
 }
+
+/* ---------------- Knowledge Base ---------------- */
+
+const KB_SECTIONS = [
+  { value: "admissions", label: "Admissions" },
+  { value: "fees", label: "Fees" },
+  { value: "hostel", label: "Hostel" },
+  { value: "placements", label: "Placements" },
+  { value: "scholarships", label: "Scholarships" },
+  { value: "faq", label: "FAQs" },
+  { value: "general", label: "General" },
+];
+
+function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: () => void }) {
+  const [section, setSection] = useState("admissions");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [pinned, setPinned] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState<string>("all");
+
+  const add = async () => {
+    if (!title.trim() || !content.trim()) return toast.error("Title and content required");
+    setBusy(true);
+    const { error } = await supabase.from("knowledge_entries").insert({
+      section,
+      title: title.trim(),
+      content: content.trim(),
+      pinned,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Saved to knowledge base — chatbot will use it");
+    setTitle(""); setContent(""); setPinned(false);
+    onChange();
+  };
+
+  const togglePin = async (e: KbEntry) => {
+    const { error } = await supabase.from("knowledge_entries").update({ pinned: !e.pinned }).eq("id", e.id);
+    if (error) return toast.error(error.message);
+    onChange();
+  };
+
+  const remove = async (e: KbEntry) => {
+    if (!confirm(`Delete "${e.title}"?`)) return;
+    const { error } = await supabase.from("knowledge_entries").delete().eq("id", e.id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    onChange();
+  };
+
+  const visible = filter === "all" ? entries : entries.filter((e) => e.section === filter);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <GlassCard className="lg:col-span-2">
+        <h2 className="mb-1 font-display text-base font-semibold">Add knowledge entry</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Anything saved here is automatically fed to CollegeGPT as authoritative college info.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Section</Label>
+            <select
+              value={section}
+              onChange={(e) => setSection(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background/40 px-3 py-1 text-sm"
+            >
+              {KB_SECTIONS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs">Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. B.Tech eligibility 2026" />
+          </div>
+          <div>
+            <Label className="text-xs">Content</Label>
+            <Textarea
+              rows={6}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Plain text or short markdown. Be precise — the chatbot will quote this."
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+            Pin (chatbot prioritizes pinned entries)
+          </label>
+          <Button onClick={add} disabled={busy} className="w-full">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" /> Save entry</>}
+          </Button>
+        </div>
+      </GlassCard>
+
+      <GlassCard className="lg:col-span-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-base font-semibold">Entries ({visible.length})</h2>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+          >
+            <option value="all">All sections</option>
+            {KB_SECTIONS.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
+          {visible.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">No entries yet for this section.</p>
+          )}
+          {visible.map((e) => (
+            <div key={e.id} className="rounded-xl border border-border/60 bg-background/30 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] uppercase">{e.section}</Badge>
+                    {e.pinned && <Pin className="h-3.5 w-3.5 text-accent" />}
+                    <span className="font-medium">{e.title}</span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground line-clamp-4">{e.content}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Updated {new Date(e.updated_at).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => togglePin(e)} title="Toggle pin">
+                    <Pin className={`h-4 w-4 ${e.pinned ? "text-accent" : ""}`} />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(e)} title="Delete">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
