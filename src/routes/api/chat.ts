@@ -184,12 +184,14 @@ export const Route = createFileRoute("/api/chat")({
         const model = gateway("google/gemini-2.5-flash");
 
         try {
+          const kb = await buildKnowledgeContext();
           const result = streamText({
             model,
-            system: SYSTEM_PROMPT,
+            system: SYSTEM_PROMPT + kb,
             messages: await convertToModelMessages(messages as UIMessage[]),
             temperature: 0.75,
           });
+
           return result.toUIMessageStreamResponse({
             originalMessages: messages as UIMessage[],
           });
