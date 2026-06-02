@@ -619,29 +619,40 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [urgent, setUrgent] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState("");
   const [busy, setBusy] = useState(false);
 
   const add = async () => {
     if (!title.trim()) return toast.error("Title required");
     setBusy(true);
-    const { error } = await supabase.from("notices").insert({
+    const payload: Record<string, unknown> = {
       title: title.trim(),
       body: body.trim() || null,
       category: category.trim() || null,
       pinned,
-    });
+      urgent,
+    };
+    if (scheduledFor) {
+      payload.scheduled_for = new Date(scheduledFor).toISOString();
+      payload.published_at = new Date(scheduledFor).toISOString();
+    }
+    const { error } = await supabase.from("notices").insert(payload);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Notice published");
-    setTitle("");
-    setBody("");
-    setCategory("");
-    setPinned(false);
+    toast.success(scheduledFor ? "Notice scheduled" : "Notice published");
+    setTitle(""); setBody(""); setCategory(""); setPinned(false); setUrgent(false); setScheduledFor("");
     onChange();
   };
 
   const togglePin = async (n: Notice) => {
     const { error } = await supabase.from("notices").update({ pinned: !n.pinned }).eq("id", n.id);
+    if (error) return toast.error(error.message);
+    onChange();
+  };
+
+  const toggleUrgent = async (n: Notice) => {
+    const { error } = await supabase.from("notices").update({ urgent: !n.urgent }).eq("id", n.id);
     if (error) return toast.error(error.message);
     onChange();
   };
@@ -665,43 +676,60 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
           </div>
           <div>
             <Label className="text-xs">Category</Label>
-            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="admissions, events, exams…" />
+            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="admissions, exam, placement, holiday, event…" />
           </div>
           <div>
             <Label className="text-xs">Body</Label>
             <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Details…" rows={5} />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
-            Pin to top
-          </label>
+          <div>
+            <Label className="text-xs">Schedule (optional)</Label>
+            <Input type="datetime-local" value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+              Pin to top
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
+              Mark urgent
+            </label>
+          </div>
           <Button onClick={add} disabled={busy} className="w-full">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" /> Publish</>}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" /> {scheduledFor ? "Schedule" : "Publish"}</>}
           </Button>
         </div>
       </GlassCard>
 
       <GlassCard className="lg:col-span-3">
         <h2 className="mb-3 font-display text-base font-semibold">Notices ({notices.length})</h2>
-        <div className="max-h-[480px] space-y-3 overflow-auto pr-1">
+        <div className="max-h-[520px] space-y-3 overflow-auto pr-1">
           {notices.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">No notices yet.</p>
           )}
           {notices.map((n) => (
-            <div key={n.id} className="rounded-xl border border-border/60 bg-background/30 p-4">
+            <div key={n.id} className={`rounded-xl border p-4 ${n.urgent ? "border-red-500/40 bg-red-500/5" : "border-border/60 bg-background/30"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {n.pinned && <Pin className="h-3.5 w-3.5 text-accent" />}
+                    {n.urgent && <Badge variant="destructive" className="text-[10px]">URGENT</Badge>}
                     <h3 className="font-medium">{n.title}</h3>
                     {n.category && <Badge variant="secondary" className="text-[10px]">{n.category}</Badge>}
                   </div>
-                  {n.body && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{n.body}</p>}
+                  {n.body && <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{n.body}</p>}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {new Date(n.published_at).toLocaleDateString()}
+                    {new Date(n.published_at).toLocaleString()}
+                    {n.scheduled_for && new Date(n.scheduled_for) > new Date() && (
+                      <span className="ml-2 text-accent">• scheduled</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => toggleUrgent(n)} title="Toggle urgent">
+                    <Megaphone className={`h-4 w-4 ${n.urgent ? "text-red-400" : ""}`} />
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => togglePin(n)} title="Toggle pin">
                     <Pin className={`h-4 w-4 ${n.pinned ? "text-accent" : ""}`} />
                   </Button>
@@ -717,6 +745,7 @@ function NoticesPanel({ notices, onChange }: { notices: Notice[]; onChange: () =
     </div>
   );
 }
+
 
 /* ---------------- Courses ---------------- */
 
