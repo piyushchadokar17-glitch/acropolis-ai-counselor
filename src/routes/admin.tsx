@@ -174,7 +174,19 @@ type Notice = {
   category: string | null;
   pinned: boolean;
   published_at: string;
+  urgent?: boolean | null;
+  scheduled_for?: string | null;
 };
+
+type KbEntry = {
+  id: string;
+  section: string;
+  title: string;
+  content: string;
+  pinned: boolean;
+  updated_at: string;
+};
+
 
 type Course = {
   id: string;
