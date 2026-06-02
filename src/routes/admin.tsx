@@ -327,6 +327,11 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
             <Link to="/">
               <Button size="sm" variant="ghost">Back to app</Button>
             </Link>
+            {onLogout && (
+              <Button size="sm" variant="ghost" onClick={onLogout} className="text-red-400 hover:text-red-300">
+                <LogOut className="mr-1 h-4 w-4" /> Logout
+              </Button>
+            )}
           </div>
         </div>
       </header>
