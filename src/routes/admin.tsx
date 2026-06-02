@@ -56,11 +56,26 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminGate() {
+  const navigate = useNavigate();
   const [state, setState] = useState<"checking" | "ok" | "unauth" | "forbidden">("checking");
 
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
+      // Check localStorage admin bypass first (onboarding auto-redirect)
+      try {
+        const raw = localStorage.getItem(ADMIN_BYPASS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.email === ADMIN_EMAIL) {
+            setState("ok");
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
       const { data: userRes } = await supabase.auth.getUser();
       if (cancelled) return;
       if (!userRes.user) {
@@ -86,6 +101,12 @@ function AdminGate() {
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleLogout = async () => {
+    localStorage.removeItem(ADMIN_BYPASS_KEY);
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
+  };
 
   if (state === "checking") {
     return (
@@ -132,7 +153,7 @@ function AdminGate() {
     );
   }
 
-  return <AdminDashboard />;
+  return <AdminDashboard onLogout={handleLogout} />;
 }
 
 type Lead = {
