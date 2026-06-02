@@ -110,6 +110,36 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_entries: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          pinned: boolean
+          section: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          section: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          section?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           course_interest: string | null
@@ -186,31 +216,40 @@ export type Database = {
       }
       notices: {
         Row: {
+          attachment_path: string | null
           body: string | null
           category: string | null
           created_at: string
           id: string
           pinned: boolean
           published_at: string
+          scheduled_for: string | null
           title: string
+          urgent: boolean
         }
         Insert: {
+          attachment_path?: string | null
           body?: string | null
           category?: string | null
           created_at?: string
           id?: string
           pinned?: boolean
           published_at?: string
+          scheduled_for?: string | null
           title: string
+          urgent?: boolean
         }
         Update: {
+          attachment_path?: string | null
           body?: string | null
           category?: string | null
           created_at?: string
           id?: string
           pinned?: boolean
           published_at?: string
+          scheduled_for?: string | null
           title?: string
+          urgent?: boolean
         }
         Relationships: []
       }
