@@ -216,26 +216,30 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [pdfs, setPdfs] = useState<Pdf[]>([]);
+  const [kb, setKb] = useState<KbEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
     setLoading(true);
-    const [l, n, c, p] = await Promise.all([
+    const [l, n, c, p, k] = await Promise.all([
       supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("notices").select("*").order("published_at", { ascending: false }),
       supabase.from("courses").select("*").order("name"),
       supabase.from("pdf_documents").select("*").order("created_at", { ascending: false }),
+      supabase.from("knowledge_entries").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false }),
     ]);
     if (l.data) setLeads(l.data as Lead[]);
     if (n.data) setNotices(n.data as Notice[]);
     if (c.data) setCourses(c.data as Course[]);
     if (p.data) setPdfs(p.data as Pdf[]);
+    if (k.data) setKb(k.data as KbEntry[]);
     setLoading(false);
   };
 
   useEffect(() => {
     void refresh();
   }, []);
+
 
   // Analytics: leads per day for last 14 days
   const leadSeries = useMemo(() => {
