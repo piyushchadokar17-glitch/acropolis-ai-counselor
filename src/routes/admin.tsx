@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -18,6 +18,7 @@ import {
   Mail,
   Phone,
   Plus,
+  LogOut,
 } from "lucide-react";
 import {
   Area,
@@ -39,6 +40,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+
+const ADMIN_EMAIL = "piyushchadokar06@gmail.com";
+const ADMIN_BYPASS_KEY = "collegegpt:adminBypass";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
