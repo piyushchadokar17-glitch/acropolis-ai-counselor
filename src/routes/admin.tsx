@@ -1164,7 +1164,16 @@ function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: (
     onChange();
   };
 
-  const visible = filter === "all" ? entries : entries.filter((e) => e.section === filter);
+  const sectioned = filter === "all" ? entries : entries.filter((e) => e.section === filter);
+  const q = search.trim().toLowerCase();
+  const visible = !q
+    ? sectioned
+    : sectioned.filter(
+        (e) =>
+          e.title.toLowerCase().includes(q) ||
+          e.content.toLowerCase().includes(q) ||
+          e.section.toLowerCase().includes(q),
+      );
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
