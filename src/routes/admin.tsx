@@ -167,6 +167,10 @@ type Lead = {
   message: string | null;
   source: string | null;
   created_at: string;
+  status?: string | null;
+  priority?: string | null;
+  notes?: string | null;
+  follow_up_at?: string | null;
 };
 
 type Notice = {
@@ -178,6 +182,9 @@ type Notice = {
   published_at: string;
   urgent?: boolean | null;
   scheduled_for?: string | null;
+  status?: string | null;
+  expires_at?: string | null;
+  tags?: string[] | null;
 };
 
 type KbEntry = {
@@ -201,6 +208,9 @@ type Course = {
   seats: number | null;
   eligibility: string | null;
   description: string | null;
+  featured?: boolean | null;
+  image_url?: string | null;
+  brochure_url?: string | null;
 };
 
 type Pdf = {
@@ -211,6 +221,8 @@ type Pdf = {
   storage_path: string;
   size_bytes: number | null;
   created_at: string;
+  tags?: string[] | null;
+  download_count?: number | null;
 };
 
 type InquiryMessage = {
@@ -538,19 +550,32 @@ function GlassCard({ children, className = "" }: { children: React.ReactNode; cl
 
 function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+
+  const updateLead = async (id: string, patch: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("leads") as any).update(patch).eq("id", id);
+    if (error) toast.error(error.message);
+    else toast.success("Lead updated");
+  };
+
   const filtered = leads.filter((l) => {
+    if (statusFilter !== "all" && (l.status ?? "new") !== statusFilter) return false;
+    if (priorityFilter !== "all" && (l.priority ?? "normal") !== priorityFilter) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return (
       l.name?.toLowerCase().includes(s) ||
       l.email?.toLowerCase().includes(s) ||
       l.course_interest?.toLowerCase().includes(s) ||
-      l.phone?.toLowerCase().includes(s)
+      l.phone?.toLowerCase().includes(s) ||
+      l.notes?.toLowerCase().includes(s)
     );
   });
 
   const exportCsv = () => {
-    const headers = ["name", "email", "phone", "course_interest", "source", "created_at"];
+    const headers = ["name", "email", "phone", "course_interest", "status", "priority", "notes", "source", "created_at"];
     const rows = filtered.map((l) =>
       headers.map((h) => JSON.stringify((l as any)[h] ?? "")).join(","),
     );
@@ -581,6 +606,27 @@ function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
               className="w-64 pl-8"
             />
           </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background/40 px-2 text-xs"
+          >
+            <option value="all">All status</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="qualified">Qualified</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background/40 px-2 text-xs"
+          >
+            <option value="all">All priority</option>
+            <option value="high">High</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+          </select>
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="mr-2 h-4 w-4" /> CSV
           </Button>
@@ -595,27 +641,34 @@ function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
                 <th className="px-4 py-3">Student</th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Interest</th>
-                <th className="px-4 py-3">Source</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Priority</th>
+                <th className="px-4 py-3">Notes</th>
                 <th className="px-4 py-3">Date</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                    No inquiries yet.
+                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                    No inquiries match your filters.
                   </td>
                 </tr>
               ) : (
                 filtered.map((l) => (
-                  <tr key={l.id} className="border-t border-border/40 transition-colors hover:bg-primary/5">
-                    <td className="px-4 py-3 font-medium">{l.name}</td>
+                  <tr key={l.id} className="border-t border-border/40 transition-colors hover:bg-primary/5 align-top">
+                    <td className="px-4 py-3 font-medium">
+                      {l.name}
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {new Date(l.created_at).toLocaleDateString()}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       <div className="flex flex-col gap-0.5">
                         {l.email && (
@@ -637,9 +690,43 @@ function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{l.source ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(l.created_at).toLocaleDateString()}
+                    <td className="px-4 py-3">
+                      <select
+                        defaultValue={l.status ?? "new"}
+                        onChange={(e) => updateLead(l.id, { status: e.target.value })}
+                        className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+                      >
+                        <option value="new">New</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="qualified">Qualified</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        defaultValue={l.priority ?? "normal"}
+                        onChange={(e) => updateLead(l.id, { priority: e.target.value })}
+                        className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+                      >
+                        <option value="high">High</option>
+                        <option value="normal">Normal</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Input
+                        defaultValue={l.notes ?? ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (l.notes ?? "")) {
+                            updateLead(l.id, { notes: e.target.value || null });
+                          }
+                        }}
+                        placeholder="Add note…"
+                        className="h-8 w-48 text-xs"
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {new Date(l.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </td>
                   </tr>
                 ))
@@ -1087,8 +1174,28 @@ const KB_SECTIONS = [
   { value: "admissions", label: "Admissions" },
   { value: "fees", label: "Fees" },
   { value: "hostel", label: "Hostel" },
+  { value: "hostel_rules", label: "Hostel Rules" },
   { value: "placements", label: "Placements" },
+  { value: "placement_prep", label: "Placement Preparation" },
   { value: "scholarships", label: "Scholarships" },
+  { value: "campus_facilities", label: "Campus Facilities" },
+  { value: "library", label: "Library Information" },
+  { value: "laboratories", label: "Laboratory Information" },
+  { value: "sports", label: "Sports Facilities" },
+  { value: "transport", label: "Transport Information" },
+  { value: "faculty", label: "Faculty Information" },
+  { value: "departments", label: "Departments" },
+  { value: "clubs", label: "Student Clubs" },
+  { value: "events", label: "Events & Activities" },
+  { value: "research", label: "Research & Innovation" },
+  { value: "alumni", label: "Alumni Information" },
+  { value: "industry", label: "Industry Collaborations" },
+  { value: "internships", label: "Internship Information" },
+  { value: "campus_life", label: "Campus Life" },
+  { value: "anti_ragging", label: "Anti-Ragging Information" },
+  { value: "examinations", label: "Examination Information" },
+  { value: "academic_calendar", label: "Academic Calendar" },
+  { value: "contact", label: "Contact Information" },
   { value: "faq", label: "FAQs" },
   { value: "general", label: "General" },
 ];
@@ -1100,6 +1207,7 @@ function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: (
   const [pinned, setPinned] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   const add = async () => {
     if (!title.trim() || !content.trim()) return toast.error("Title and content required");
@@ -1131,7 +1239,16 @@ function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: (
     onChange();
   };
 
-  const visible = filter === "all" ? entries : entries.filter((e) => e.section === filter);
+  const sectioned = filter === "all" ? entries : entries.filter((e) => e.section === filter);
+  const q = search.trim().toLowerCase();
+  const visible = !q
+    ? sectioned
+    : sectioned.filter(
+        (e) =>
+          e.title.toLowerCase().includes(q) ||
+          e.content.toLowerCase().includes(q) ||
+          e.section.toLowerCase().includes(q),
+      );
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -1177,18 +1294,29 @@ function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: (
       </GlassCard>
 
       <GlassCard className="lg:col-span-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-base font-semibold">Entries ({visible.length})</h2>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
-          >
-            <option value="all">All sections</option>
-            {KB_SECTIONS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search entries…"
+                className="h-8 w-52 pl-7 text-xs"
+              />
+            </div>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+            >
+              <option value="all">All sections</option>
+              {KB_SECTIONS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
           {visible.length === 0 && (

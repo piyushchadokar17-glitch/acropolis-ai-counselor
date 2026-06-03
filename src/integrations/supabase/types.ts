@@ -40,43 +40,55 @@ export type Database = {
       }
       courses: {
         Row: {
+          brochure_url: string | null
           code: string
           created_at: string
           department: string | null
           description: string | null
           duration_years: number | null
           eligibility: string | null
+          featured: boolean
           fees_per_year: number | null
           id: string
+          image_url: string | null
           level: string | null
           name: string
           seats: number | null
+          tags: string[]
         }
         Insert: {
+          brochure_url?: string | null
           code: string
           created_at?: string
           department?: string | null
           description?: string | null
           duration_years?: number | null
           eligibility?: string | null
+          featured?: boolean
           fees_per_year?: number | null
           id?: string
+          image_url?: string | null
           level?: string | null
           name: string
           seats?: number | null
+          tags?: string[]
         }
         Update: {
+          brochure_url?: string | null
           code?: string
           created_at?: string
           department?: string | null
           description?: string | null
           duration_years?: number | null
           eligibility?: string | null
+          featured?: boolean
           fees_per_year?: number | null
           id?: string
+          image_url?: string | null
           level?: string | null
           name?: string
           seats?: number | null
+          tags?: string[]
         }
         Relationships: []
       }
@@ -145,33 +157,45 @@ export type Database = {
           course_interest: string | null
           created_at: string
           email: string | null
+          follow_up_at: string | null
           id: string
           message: string | null
           name: string
+          notes: string | null
           phone: string | null
+          priority: string
           source: string | null
+          status: string
           user_id: string | null
         }
         Insert: {
           course_interest?: string | null
           created_at?: string
           email?: string | null
+          follow_up_at?: string | null
           id?: string
           message?: string | null
           name: string
+          notes?: string | null
           phone?: string | null
+          priority?: string
           source?: string | null
+          status?: string
           user_id?: string | null
         }
         Update: {
           course_interest?: string | null
           created_at?: string
           email?: string | null
+          follow_up_at?: string | null
           id?: string
           message?: string | null
           name?: string
+          notes?: string | null
           phone?: string | null
+          priority?: string
           source?: string | null
+          status?: string
           user_id?: string | null
         }
         Relationships: []
@@ -220,10 +244,13 @@ export type Database = {
           body: string | null
           category: string | null
           created_at: string
+          expires_at: string | null
           id: string
           pinned: boolean
           published_at: string
           scheduled_for: string | null
+          status: string
+          tags: string[]
           title: string
           urgent: boolean
         }
@@ -232,10 +259,13 @@ export type Database = {
           body?: string | null
           category?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           pinned?: boolean
           published_at?: string
           scheduled_for?: string | null
+          status?: string
+          tags?: string[]
           title: string
           urgent?: boolean
         }
@@ -244,10 +274,13 @@ export type Database = {
           body?: string | null
           category?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           pinned?: boolean
           published_at?: string
           scheduled_for?: string | null
+          status?: string
+          tags?: string[]
           title?: string
           urgent?: boolean
         }
@@ -258,9 +291,11 @@ export type Database = {
           category: string | null
           created_at: string
           description: string | null
+          download_count: number
           id: string
           size_bytes: number | null
           storage_path: string
+          tags: string[]
           title: string
           uploaded_by: string | null
         }
@@ -268,9 +303,11 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          download_count?: number
           id?: string
           size_bytes?: number | null
           storage_path: string
+          tags?: string[]
           title: string
           uploaded_by?: string | null
         }
@@ -278,9 +315,11 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          download_count?: number
           id?: string
           size_bytes?: number | null
           storage_path?: string
+          tags?: string[]
           title?: string
           uploaded_by?: string | null
         }

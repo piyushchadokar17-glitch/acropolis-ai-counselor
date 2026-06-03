@@ -14,12 +14,19 @@ async function buildKnowledgeContext(): Promise<string> {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const nowIso = new Date().toISOString();
     const [coursesRes, noticesRes, kbRes, pdfsRes] = await Promise.all([
-      supabaseAdmin.from("courses").select("*").order("name"),
+      supabaseAdmin
+        .from("courses")
+        .select("*")
+        .order("featured", { ascending: false })
+        .order("name"),
       supabaseAdmin
         .from("notices")
         .select("*")
+        .eq("status", "published")
         .or(`scheduled_for.is.null,scheduled_for.lte.${nowIso}`)
+        .or(`expires_at.is.null,expires_at.gte.${nowIso}`)
         .order("pinned", { ascending: false })
+        .order("urgent", { ascending: false })
         .order("published_at", { ascending: false })
         .limit(20),
       supabaseAdmin
@@ -30,7 +37,7 @@ async function buildKnowledgeContext(): Promise<string> {
         .limit(120),
       supabaseAdmin
         .from("pdf_documents")
-        .select("title,category,description,storage_path")
+        .select("title,category,description,storage_path,tags")
         .order("created_at", { ascending: false })
         .limit(40),
     ]);
