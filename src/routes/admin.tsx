@@ -167,6 +167,10 @@ type Lead = {
   message: string | null;
   source: string | null;
   created_at: string;
+  status?: string | null;
+  priority?: string | null;
+  notes?: string | null;
+  follow_up_at?: string | null;
 };
 
 type Notice = {
@@ -178,6 +182,9 @@ type Notice = {
   published_at: string;
   urgent?: boolean | null;
   scheduled_for?: string | null;
+  status?: string | null;
+  expires_at?: string | null;
+  tags?: string[] | null;
 };
 
 type KbEntry = {
@@ -201,6 +208,9 @@ type Course = {
   seats: number | null;
   eligibility: string | null;
   description: string | null;
+  featured?: boolean | null;
+  image_url?: string | null;
+  brochure_url?: string | null;
 };
 
 type Pdf = {
@@ -211,6 +221,8 @@ type Pdf = {
   storage_path: string;
   size_bytes: number | null;
   created_at: string;
+  tags?: string[] | null;
+  download_count?: number | null;
 };
 
 type InquiryMessage = {
