@@ -606,6 +606,27 @@ function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
               className="w-64 pl-8"
             />
           </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background/40 px-2 text-xs"
+          >
+            <option value="all">All status</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="qualified">Qualified</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background/40 px-2 text-xs"
+          >
+            <option value="all">All priority</option>
+            <option value="high">High</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+          </select>
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="mr-2 h-4 w-4" /> CSV
           </Button>
