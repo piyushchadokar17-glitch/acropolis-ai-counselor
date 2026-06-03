@@ -1132,6 +1132,7 @@ function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: (
   const [pinned, setPinned] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   const add = async () => {
     if (!title.trim() || !content.trim()) return toast.error("Title and content required");
