@@ -213,34 +213,72 @@ type Pdf = {
   created_at: string;
 };
 
+type InquiryMessage = {
+  id: string;
+  inquiry_id: string;
+  email: string;
+  role: string;
+  content: string;
+  created_at: string;
+};
+
 function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [pdfs, setPdfs] = useState<Pdf[]>([]);
   const [kb, setKb] = useState<KbEntry[]>([]);
+  const [inquiryMessages, setInquiryMessages] = useState<InquiryMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const fetchAdmin = useServerFn(getAdminDashboard);
 
-  const refresh = async () => {
-    setLoading(true);
-    const [l, n, c, p, k] = await Promise.all([
-      supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("notices").select("*").order("published_at", { ascending: false }),
-      supabase.from("courses").select("*").order("name"),
-      supabase.from("pdf_documents").select("*").order("created_at", { ascending: false }),
-      supabase.from("knowledge_entries").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false }),
-    ]);
-    if (l.data) setLeads(l.data as Lead[]);
-    if (n.data) setNotices(n.data as Notice[]);
-    if (c.data) setCourses(c.data as Course[]);
-    if (p.data) setPdfs(p.data as Pdf[]);
-    if (k.data) setKb(k.data as KbEntry[]);
-    setLoading(false);
+  const refresh = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      // Prefer authenticated path if signed in as admin; otherwise use the
+      // server function (validates the bypass email via service-role).
+      const { data: userRes } = await supabase.auth.getUser();
+      const isAuthedAdmin = !!userRes.user;
+
+      if (isAuthedAdmin) {
+        const [l, n, c, p, k, im] = await Promise.all([
+          supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(1000),
+          supabase.from("notices").select("*").order("published_at", { ascending: false }),
+          supabase.from("courses").select("*").order("name"),
+          supabase.from("pdf_documents").select("*").order("created_at", { ascending: false }),
+          supabase.from("knowledge_entries").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false }),
+          supabase.from("inquiry_messages").select("id,inquiry_id,email,role,content,created_at").order("created_at", { ascending: false }).limit(2000),
+        ]);
+        if (l.data) setLeads(l.data as Lead[]);
+        if (n.data) setNotices(n.data as Notice[]);
+        if (c.data) setCourses(c.data as Course[]);
+        if (p.data) setPdfs(p.data as Pdf[]);
+        if (k.data) setKb(k.data as KbEntry[]);
+        if (im.data) setInquiryMessages(im.data as InquiryMessage[]);
+      } else {
+        const res = await fetchAdmin({ data: { adminEmail: ADMIN_EMAIL } });
+        setLeads(res.leads as Lead[]);
+        setNotices(res.notices as Notice[]);
+        setCourses(res.courses as Course[]);
+        setPdfs(res.pdfs as Pdf[]);
+        setKb(res.kb as KbEntry[]);
+        setInquiryMessages(res.inquiryMessages as InquiryMessage[]);
+      }
+    } catch (e) {
+      if (!silent) console.error("[admin] refresh failed", e);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   };
 
   useEffect(() => {
     void refresh();
+    // Poll every 10s for live dashboard updates (works with localStorage bypass).
+    const id = setInterval(() => { void refresh(true); }, 10000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
 
   // Analytics: leads per day for last 14 days
