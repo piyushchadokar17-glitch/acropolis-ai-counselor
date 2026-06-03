@@ -1219,18 +1219,29 @@ function KnowledgePanel({ entries, onChange }: { entries: KbEntry[]; onChange: (
       </GlassCard>
 
       <GlassCard className="lg:col-span-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-base font-semibold">Entries ({visible.length})</h2>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
-          >
-            <option value="all">All sections</option>
-            {KB_SECTIONS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search entries…"
+                className="h-8 w-52 pl-7 text-xs"
+              />
+            </div>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+            >
+              <option value="all">All sections</option>
+              {KB_SECTIONS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
           {visible.length === 0 && (
