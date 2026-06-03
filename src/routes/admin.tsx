@@ -377,7 +377,7 @@ function AdminDashboard({ onLogout }: { onLogout?: () => void }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={() => refresh()} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
             </Button>
             <Link to="/">
