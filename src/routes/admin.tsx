@@ -641,27 +641,34 @@ function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
                 <th className="px-4 py-3">Student</th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Interest</th>
-                <th className="px-4 py-3">Source</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Priority</th>
+                <th className="px-4 py-3">Notes</th>
                 <th className="px-4 py-3">Date</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                    No inquiries yet.
+                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                    No inquiries match your filters.
                   </td>
                 </tr>
               ) : (
                 filtered.map((l) => (
-                  <tr key={l.id} className="border-t border-border/40 transition-colors hover:bg-primary/5">
-                    <td className="px-4 py-3 font-medium">{l.name}</td>
+                  <tr key={l.id} className="border-t border-border/40 transition-colors hover:bg-primary/5 align-top">
+                    <td className="px-4 py-3 font-medium">
+                      {l.name}
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {new Date(l.created_at).toLocaleDateString()}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       <div className="flex flex-col gap-0.5">
                         {l.email && (
@@ -683,9 +690,43 @@ function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{l.source ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(l.created_at).toLocaleDateString()}
+                    <td className="px-4 py-3">
+                      <select
+                        defaultValue={l.status ?? "new"}
+                        onChange={(e) => updateLead(l.id, { status: e.target.value })}
+                        className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+                      >
+                        <option value="new">New</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="qualified">Qualified</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        defaultValue={l.priority ?? "normal"}
+                        onChange={(e) => updateLead(l.id, { priority: e.target.value })}
+                        className="h-8 rounded-md border border-input bg-background/40 px-2 text-xs"
+                      >
+                        <option value="high">High</option>
+                        <option value="normal">Normal</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Input
+                        defaultValue={l.notes ?? ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (l.notes ?? "")) {
+                            updateLead(l.id, { notes: e.target.value || null });
+                          }
+                        }}
+                        placeholder="Add note…"
+                        className="h-8 w-48 text-xs"
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {new Date(l.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </td>
                   </tr>
                 ))
