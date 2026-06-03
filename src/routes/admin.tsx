@@ -554,7 +554,8 @@ function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
   const updateLead = async (id: string, patch: Record<string, unknown>) => {
-    const { error } = await supabase.from("leads").update(patch).eq("id", id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("leads") as any).update(patch).eq("id", id);
     if (error) toast.error(error.message);
     else toast.success("Lead updated");
   };
