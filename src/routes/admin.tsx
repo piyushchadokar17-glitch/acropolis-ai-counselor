@@ -550,19 +550,31 @@ function GlassCard({ children, className = "" }: { children: React.ReactNode; cl
 
 function LeadsPanel({ leads, loading }: { leads: Lead[]; loading: boolean }) {
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+
+  const updateLead = async (id: string, patch: Partial<Lead>) => {
+    const { error } = await supabase.from("leads").update(patch).eq("id", id);
+    if (error) toast.error(error.message);
+    else toast.success("Lead updated");
+  };
+
   const filtered = leads.filter((l) => {
+    if (statusFilter !== "all" && (l.status ?? "new") !== statusFilter) return false;
+    if (priorityFilter !== "all" && (l.priority ?? "normal") !== priorityFilter) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return (
       l.name?.toLowerCase().includes(s) ||
       l.email?.toLowerCase().includes(s) ||
       l.course_interest?.toLowerCase().includes(s) ||
-      l.phone?.toLowerCase().includes(s)
+      l.phone?.toLowerCase().includes(s) ||
+      l.notes?.toLowerCase().includes(s)
     );
   });
 
   const exportCsv = () => {
-    const headers = ["name", "email", "phone", "course_interest", "source", "created_at"];
+    const headers = ["name", "email", "phone", "course_interest", "status", "priority", "notes", "source", "created_at"];
     const rows = filtered.map((l) =>
       headers.map((h) => JSON.stringify((l as any)[h] ?? "")).join(","),
     );
