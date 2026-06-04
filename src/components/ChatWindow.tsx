@@ -78,6 +78,53 @@ export function ChatWindow({
     textareaRef.current?.focus();
   }, [threadId]);
 
+  // Preferred Indian-English voice selection
+  const indianVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const pickIndianVoice = useCallback(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return null;
+    const preferredNames = [
+      "Google हिन्दी",
+      "Google English (India)",
+      "Google UK English Female",
+      "Microsoft Heera",
+      "Microsoft Ravi",
+      "Microsoft Priya",
+      "Microsoft Neerja",
+      "Veena",
+      "Rishi",
+    ];
+    // 1) Exact preferred name match
+    for (const name of preferredNames) {
+      const v = voices.find((vo) => vo.name.toLowerCase().includes(name.toLowerCase()));
+      if (v) return v;
+    }
+    // 2) en-IN locale
+    const enIN = voices.find((v) => /en[-_]IN/i.test(v.lang));
+    if (enIN) return enIN;
+    // 3) any India-tagged voice
+    const india = voices.find((v) => /india/i.test(v.name) || /hi[-_]IN/i.test(v.lang));
+    if (india) return india;
+    // 4) natural-sounding female english fallback
+    const natural = voices.find(
+      (v) => /en[-_](GB|US)/i.test(v.lang) && /(natural|female|samantha|aria|jenny)/i.test(v.name),
+    );
+    return natural || voices.find((v) => /^en/i.test(v.lang)) || voices[0];
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const load = () => {
+      indianVoiceRef.current = pickIndianVoice();
+    };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    return () => {
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, [pickIndianVoice]);
+
   // TTS for assistant replies
   const lastSpokenRef = useRef<string>("");
   useEffect(() => {
@@ -90,18 +137,54 @@ export function ChatWindow({
       .map((p) => (p as { text: string }).text)
       .join(" ")
       .replace(/[*_`#>\[\]()]/g, "")
-      .slice(0, 600);
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 800);
     if (!text || lastSpokenRef.current === last.id) return;
     lastSpokenRef.current = last.id;
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 1.05;
-    utter.pitch = 1.0;
-    utter.onstart = () => setAiSpeaking(true);
-    utter.onend = () => setAiSpeaking(false);
-    utter.onerror = () => setAiSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
-  }, [messages, status, voiceOn]);
+
+    // Cancel any prior speech cleanly before starting new utterance
+    try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+
+    const voice = indianVoiceRef.current || pickIndianVoice();
+    // Split into sentences for smoother pacing & natural pauses
+    const chunks = text.match(/[^.!?]+[.!?]?/g)?.map((s) => s.trim()).filter(Boolean) || [text];
+
+    let cancelled = false;
+    const speakChunk = (i: number) => {
+      if (cancelled || i >= chunks.length) {
+        if (i >= chunks.length) setAiSpeaking(false);
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance(chunks[i]);
+      if (voice) {
+        utter.voice = voice;
+        utter.lang = voice.lang || "en-IN";
+      } else {
+        utter.lang = "en-IN";
+      }
+      utter.rate = 0.98;
+      utter.pitch = 1.05;
+      utter.volume = 1;
+      utter.onstart = () => { if (i === 0) setAiSpeaking(true); };
+      utter.onend = () => speakChunk(i + 1);
+      utter.onerror = () => { setAiSpeaking(false); };
+      window.speechSynthesis.speak(utter);
+    };
+    speakChunk(0);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, status, voiceOn, pickIndianVoice]);
+
+  // Stop speech when voice is turned off
+  useEffect(() => {
+    if (!voiceOn && typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setAiSpeaking(false);
+    }
+  }, [voiceOn]);
 
   // Cleanup audio analyser on unmount
   useEffect(() => {
