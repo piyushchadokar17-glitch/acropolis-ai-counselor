@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Best-effort sync of a chat thread to Supabase. No-ops if not signed in.
  * Upserts the chat row and inserts any messages whose IDs aren't already stored.
+ *
+ * IMPORTANT: dedup IDs are reserved synchronously (before the await) so that
+ * the many `updateMessages` calls fired during streaming don't all race past
+ * the same `seen.has(id)` check and insert duplicate rows.
  */
 const syncedMessageIds = new Map<string, Set<string>>();
 const syncedInquiryMessageIds = new Map<string, Set<string>>();
@@ -25,10 +29,23 @@ function readInquiry(): StoredInquiry | null {
   }
 }
 
+function isStreaming(m: UIMessage): boolean {
+  // Skip assistant messages still streaming — wait until they're "done" so we
+  // store the final content once, not one row per delta.
+  return m.parts.some(
+    (p) => (p as { state?: string }).state === "streaming",
+  );
+}
+
+function messageContent(m: UIMessage): string {
+  return m.parts
+    .filter((p) => p.type === "text")
+    .map((p) => (p as { text: string }).text)
+    .join("");
+}
+
 /**
  * Best-effort sync of a guest student's chat to the inquiry_messages table.
- * Runs in parallel with the authenticated path so anonymous students still
- * have their conversation captured for the Admission Cell.
  */
 export async function syncInquiryMessages(threadId: string, messages: UIMessage[]) {
   try {
@@ -41,25 +58,26 @@ export async function syncInquiryMessages(threadId: string, messages: UIMessage[
       syncedInquiryMessageIds.set(threadId, seen);
     }
 
-    const fresh = messages.filter((m) => !seen!.has(m.id));
+    const fresh = messages.filter((m) => !seen!.has(m.id) && !isStreaming(m));
     if (fresh.length === 0) return;
 
-    const rows = fresh.map((m) => {
-      const content = m.parts
-        .filter((p) => p.type === "text")
-        .map((p) => (p as { text: string }).text)
-        .join("");
-      return {
-        inquiry_id: inq.inquiryId,
-        email: inq.email,
-        role: m.role,
-        content,
-        parts: JSON.parse(JSON.stringify(m.parts)),
-      };
-    });
+    // Reserve IDs synchronously to prevent concurrent calls from re-inserting.
+    fresh.forEach((m) => seen!.add(m.id));
+
+    const rows = fresh.map((m) => ({
+      inquiry_id: inq.inquiryId,
+      email: inq.email,
+      role: m.role,
+      content: messageContent(m),
+      parts: JSON.parse(JSON.stringify(m.parts)),
+    }));
 
     const { error } = await supabase.from("inquiry_messages").insert(rows);
-    if (!error) fresh.forEach((m) => seen!.add(m.id));
+    if (error) {
+      // Roll back so a retry can happen on the next update.
+      fresh.forEach((m) => seen!.delete(m.id));
+      console.warn("inquiry sync failed", error);
+    }
   } catch (e) {
     console.warn("inquiry sync failed", e);
   }
@@ -93,26 +111,25 @@ export async function syncThreadToSupabase(
       data?.forEach((r) => seen!.add(r.id as string));
     }
 
-    const fresh = messages.filter((m) => !seen!.has(m.id));
+    const fresh = messages.filter((m) => !seen!.has(m.id) && !isStreaming(m));
     if (fresh.length === 0) return;
 
-    const rows = fresh.map((m) => {
-      const content = m.parts
-        .filter((p) => p.type === "text")
-        .map((p) => (p as { text: string }).text)
-        .join("");
-      return {
-        id: m.id,
-        chat_id: threadId,
-        user_id: user.id,
-        role: m.role,
-        content,
-        parts: JSON.parse(JSON.stringify(m.parts)),
-      };
-    });
+    fresh.forEach((m) => seen!.add(m.id));
+
+    const rows = fresh.map((m) => ({
+      id: m.id,
+      chat_id: threadId,
+      user_id: user.id,
+      role: m.role,
+      content: messageContent(m),
+      parts: JSON.parse(JSON.stringify(m.parts)),
+    }));
 
     const { error } = await supabase.from("messages").insert(rows);
-    if (!error) fresh.forEach((m) => seen!.add(m.id));
+    if (error) {
+      fresh.forEach((m) => seen!.delete(m.id));
+      console.warn("chat sync failed", error);
+    }
   } catch (e) {
     console.warn("chat sync failed", e);
   }
