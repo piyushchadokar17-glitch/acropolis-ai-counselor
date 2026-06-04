@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "🎓 CollegeGPT – Acropolis AI Counselor" },
+      { name: "description", content: "AI-powered admission counselor for Acropolis Institute of Technology and Research, Indore. Get instant guidance on admissions, courses, fees, scholarships, plac" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "🎓 CollegeGPT – Acropolis AI Counselor" },
+      { property: "og:description", content: "AI-powered admission counselor for Acropolis Institute of Technology and Research, Indore. Get instant guidance on admissions, courses, fees, scholarships, plac" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "🎓 CollegeGPT – Acropolis AI Counselor" },
+      { name: "twitter:description", content: "AI-powered admission counselor for Acropolis Institute of Technology and Research, Indore. Get instant guidance on admissions, courses, fees, scholarships, plac" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/BhTjVy9ubXgfwzarNBXrRX14lM32/social-images/social-1780597758314-Screenshot_2026-05-22_at_11.14.32_PM.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/BhTjVy9ubXgfwzarNBXrRX14lM32/social-images/social-1780597758314-Screenshot_2026-05-22_at_11.14.32_PM.webp" },
     ],
     links: [
       {
